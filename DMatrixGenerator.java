@@ -226,7 +226,7 @@ public class DMatrixGenerator {
       String.format("Wordmap generation took %d seconds",
       (System.nanoTime() - startTime) / 1000000000));
     System.out.println("Generating matrices...");
-    long startTime = System.nanoTime();
+    startTime = System.nanoTime();
     ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
     for (String filePath : filePaths) {
       Future tmp = pool.submit(new DMatrixFileWorker(filePath, this));
