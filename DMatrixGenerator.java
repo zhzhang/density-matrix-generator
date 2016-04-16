@@ -42,11 +42,7 @@ public class DMatrixGenerator {
     } else {
       return;
     }
-    long startTime = System.nanoTime();
     dmg.generateMatrices();
-    System.out.println(
-      String.format("Matrix generation took %d seconds",
-      (System.nanoTime() - startTime) / 1000000000));
   }
 
   DMatrixGenerator(String root, int numThreads) {
@@ -223,7 +219,14 @@ public class DMatrixGenerator {
 
   public void generateMatrices() {
     List<String> filePaths = getFilePaths(this.root);
+    System.out.println("Generating wordmap...");
+    long startTime = System.nanoTime();
     generateWordmap(filePaths);
+    System.out.println(
+      String.format("Wordmap generation took %d seconds",
+      (System.nanoTime() - startTime) / 1000000000));
+    System.out.println("Generating matrices...");
+    long startTime = System.nanoTime();
     ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
     for (String filePath : filePaths) {
       Future tmp = pool.submit(new DMatrixFileWorker(filePath, this));
@@ -239,6 +242,9 @@ public class DMatrixGenerator {
       pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
     } catch (InterruptedException e) {
     }
+    System.out.println(
+      String.format("Matrix generation took %d seconds",
+      (System.nanoTime() - startTime) / 1000000000));
   }
 
   protected void updateMatrix(String word, int x, int y, int diff) {
