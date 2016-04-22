@@ -230,12 +230,6 @@ public class DMatrixGenerator {
     ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
     for (String filePath : filePaths) {
       Future tmp = pool.submit(new DMatrixFileWorker(filePath, this));
-      try {
-        tmp.get();
-      } catch (ExecutionException e) {
-        System.out.println(e.getCause());
-      } catch (InterruptedException e) {
-      }
     }
     pool.shutdown();
     try {
@@ -294,7 +288,6 @@ class DMatrixFileWorker implements Runnable {
         }
         tmp++;
       }
-      System.out.println(tmp);
     } catch (IOException e) {
       System.out.println("IOException in run.");
     }
