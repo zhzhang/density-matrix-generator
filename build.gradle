@@ -1,0 +1,18 @@
+plugins {
+    id 'com.google.protobuf' version '0.7.6'
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'com.google.protobuf:protobuf-java:2.6.1'
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:2.6.1'
+    }
+}

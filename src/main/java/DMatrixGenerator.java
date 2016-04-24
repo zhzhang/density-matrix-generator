@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+import dmatrix.DensityMatrix;
 
 public class DMatrixGenerator {
-  
+
   private String root;
   private int numThreads;
   private int dim;
@@ -43,6 +44,7 @@ public class DMatrixGenerator {
       return;
     }
     dmg.generateMatrices();
+    dmg.outputMatrices("tmp");
   }
 
   DMatrixGenerator(String root, int numThreads) {
@@ -60,7 +62,7 @@ public class DMatrixGenerator {
     this.loadTargets(targets);
     this.densityMatrices = new DMatrixEntry[this.dim][this.dim];
     for (int i = 0; i < this.dim; i++) {
-      for (int j = 0; j < this.dim; j++) {
+      for (int j = i; j < this.dim; j++) {
         this.densityMatrices[i][j] = new DMatrixEntry(i,j);
       }
     }
@@ -229,7 +231,7 @@ public class DMatrixGenerator {
     startTime = System.nanoTime();
     ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
     for (String filePath : filePaths) {
-      Future tmp = pool.submit(new DMatrixFileWorker(filePath, this));
+      pool.submit(new DMatrixFileWorker(filePath, this));
     }
     pool.shutdown();
     try {
@@ -242,7 +244,21 @@ public class DMatrixGenerator {
   }
 
   protected void updateMatrix(String word, int x, int y, int diff) {
-    this.densityMatrices[x][y].updateEntry(word, diff);
+    int min; int max;
+    if (x < y) {
+      min = x; max = y;
+    } else {
+      min = y; max = x;
+    }
+    this.densityMatrices[min][max-min].updateEntry(word, diff);
+  }
+
+  public void outputMatrices(String outputPath) {
+    //Map<String,MatrixList> matrices;
+    for (DMatrixEntry[] tmp : this.densityMatrices) {
+      for (DMatrixEntry entry : tmp) {
+      }
+    }
   }
 
 }
@@ -262,7 +278,6 @@ class DMatrixFileWorker implements Runnable {
     System.out.println(this.path);
     try {
       String line;
-      int tmp = 0;
       while ( (line = fileReader.readLine()) != null) {
         String[] strTokens = this.dMatrixGenerator.tokenizeLine(line);
         List<Integer> tokens = this.dMatrixGenerator.strTokensToIndices(strTokens);
@@ -286,7 +301,6 @@ class DMatrixFileWorker implements Runnable {
             }
           }
         }
-        tmp++;
       }
     } catch (IOException e) {
       System.out.println("IOException in run.");
@@ -298,19 +312,19 @@ class DMatrixFileWorker implements Runnable {
 class DMatrixEntry {
   int x;
   int y;
-  Map<String,Integer> words;
-  
+  Map<String,Float> words;
+
   DMatrixEntry(int x, int y) {
     this.x = x;
     this.y = y;
-    this.words = new HashMap<String,Integer>();
+    this.words = new HashMap<String,Float>();
   }
 
   float getEntry(String word) {
     return 0.0f;
   }
 
-  void updateEntry(String word, int diff) {
+  void updateEntry(String word, float diff) {
     synchronized(this) {
       if (this.words.containsKey(word)) {
         this.words.put(word, this.words.get(word) + diff);
@@ -321,4 +335,3 @@ class DMatrixEntry {
   }
 
 }
-

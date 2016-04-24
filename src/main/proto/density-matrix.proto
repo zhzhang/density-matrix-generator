@@ -1,0 +1,17 @@
+package dmatrix;
+
+message Matrix {
+  required string word = 1;
+
+  message Entry {
+    required int32 x = 1;
+    required int32 y = 2;
+    required float val = 3;
+  }
+
+  repeated Entry entries = 2;
+}
+
+message MatrixList {
+  repeated Matrix matrices = 1;
+}
