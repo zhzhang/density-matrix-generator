@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import dmatrix.DensityMatrix.DMatrixList;
 import dmatrix.DensityMatrix.DMatrix;
-import java.io.FileInputStream;
 
 public class DMatrixGenerator {
 
@@ -83,9 +82,8 @@ public class DMatrixGenerator {
       String line;
       while ( (line = br.readLine()) != null) {
         String[] tmp = line.split("\\s+");
-        if (tmp[2].equals("hyper")) {
-          this.targets.add(tmp[0].split("-")[0]);
-          this.targets.add(tmp[3].split("-")[0]);
+        for (String s : tmp) {
+          this.targets.add(s);
         }
       }
     } catch (IOException e) {
