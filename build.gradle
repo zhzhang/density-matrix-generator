@@ -1,14 +1,25 @@
 plugins {
-    id 'com.google.protobuf' version '0.7.6'
-    id 'java'
+    id "com.google.protobuf" version "0.7.6"
+    id "java"
 }
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
     compile 'com.google.protobuf:protobuf-java:2.6.1'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class':'DMatrixGenerator' 
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
 
 protobuf {
@@ -16,3 +27,4 @@ protobuf {
         artifact = 'com.google.protobuf:protoc:2.6.1'
     }
 }
+

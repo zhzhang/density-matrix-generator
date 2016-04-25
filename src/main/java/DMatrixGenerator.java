@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -22,7 +23,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-import dmatrix.DensityMatrix;
+import dmatrix.DensityMatrix.DMatrixList;
+import dmatrix.DensityMatrix.DMatrix;
+import java.io.FileInputStream;
 
 public class DMatrixGenerator {
 
@@ -32,7 +35,7 @@ public class DMatrixGenerator {
   protected Map<String,Integer> wordMap;
   private Set<String> stopWords;
   protected Set<String> targets;
-  private DMatrixEntry[][] densityMatrices;
+  private DMatrixCell[][] densityMatrices;
 
   public static void main(String[] args) {
     DMatrixGenerator dmg;
@@ -45,6 +48,11 @@ public class DMatrixGenerator {
     }
     dmg.generateMatrices();
     dmg.outputMatrices("tmp");
+    try {
+      DMatrixList dm = DMatrixList.parseFrom(new FileInputStream("matrices.dat"));
+      System.out.println(dm);
+    } catch (IOException e) {
+    }
   }
 
   DMatrixGenerator(String root, int numThreads) {
@@ -57,13 +65,14 @@ public class DMatrixGenerator {
   DMatrixGenerator(String root, String targets, int numThreads, String stopListPath) {
     this.root = root;
     this.numThreads = numThreads;
-    this.dim = 2000;
+    this.dim = 200;
     this.loadStopList(stopListPath);
     this.loadTargets(targets);
-    this.densityMatrices = new DMatrixEntry[this.dim][this.dim];
+    this.densityMatrices = new DMatrixCell[this.dim][];
     for (int i = 0; i < this.dim; i++) {
-      for (int j = i; j < this.dim; j++) {
-        this.densityMatrices[i][j] = new DMatrixEntry(i,j);
+      this.densityMatrices[i] = new DMatrixCell[this.dim - i];
+      for (int j = 0; j < this.dim - i; j++) {
+        this.densityMatrices[i][j] = new DMatrixCell(i,j);
       }
     }
   }
@@ -206,10 +215,10 @@ public class DMatrixGenerator {
       .collect(Collectors.toList());
     List<Integer[]> output = new ArrayList<Integer[]>();
     int index = 0;
-    ListIterator<Integer[]> mainIter = output.listIterator();
+    ListIterator<Integer[]> mainIter = countList.listIterator();
     while (mainIter.hasNext()) {
       Integer[] current = mainIter.next();
-      ListIterator<Integer[]> innerIter = output.listIterator(index);
+      ListIterator<Integer[]> innerIter = countList.listIterator(index);
       while (innerIter.hasNext()) {
         Integer[] tmp = innerIter.next();
         output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
@@ -221,6 +230,11 @@ public class DMatrixGenerator {
 
   public void generateMatrices() {
     List<String> filePaths = getFilePaths(this.root);
+    int partitionSize = (int) Math.ceil((float) filePaths.size() / this.numThreads);
+    List<List<String>> filePathPartitions = new ArrayList<List<String>>();
+    for (int i = 0; i < filePaths.size(); i += partitionSize) {
+      filePathPartitions.add(filePaths.subList(i, Math.min(i + partitionSize, filePaths.size())));
+    }
     System.out.println("Generating wordmap...");
     long startTime = System.nanoTime();
     generateWordmap(filePaths);
@@ -230,13 +244,14 @@ public class DMatrixGenerator {
     System.out.println("Generating matrices...");
     startTime = System.nanoTime();
     ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
-    for (String filePath : filePaths) {
-      pool.submit(new DMatrixFileWorker(filePath, this));
+    for (List<String> filePathPartition : filePathPartitions) {
+      pool.submit(new DMatrixFileWorker(filePathPartition, this));
     }
     pool.shutdown();
     try {
       pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
     } catch (InterruptedException e) {
+      //TODO: see if graceful exit is possible here
     }
     System.out.println(
       String.format("Matrix generation took %d seconds",
@@ -254,28 +269,56 @@ public class DMatrixGenerator {
   }
 
   public void outputMatrices(String outputPath) {
-    //Map<String,MatrixList> matrices;
-    for (DMatrixEntry[] tmp : this.densityMatrices) {
-      for (DMatrixEntry entry : tmp) {
+    DMatrixList.Builder outputList = DMatrixList.newBuilder();
+    Map<String,DMatrix.Builder> outputMatrices
+        = new HashMap<String,DMatrix.Builder>();
+    for (String target : this.targets) {
+      DMatrix.Builder targetMatrix = DMatrix.newBuilder();
+      targetMatrix.setWord(target);
+      outputMatrices.put(target, targetMatrix);
+    }
+    for (DMatrixCell[] tmp : this.densityMatrices) {
+      for (DMatrixCell cell : tmp) {
+        for (Map.Entry<String,Float> entry : cell.getAllEntries()) {
+          DMatrix.DMatrixEntry.Builder dMatrixEntry
+              = DMatrix.DMatrixEntry.newBuilder();
+          dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
+          outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
+        }
       }
+    }
+    for (String target : this.targets) {
+      outputList.addMatrices(outputMatrices.get(target));
+    }
+    try {
+      FileOutputStream outputStream = new FileOutputStream("matrices.dat");
+      outputList.build().writeTo(outputStream);
+      outputStream.close();
+    } catch (IOException e) {
     }
   }
 
 }
 
 class DMatrixFileWorker implements Runnable {
-  private String path;
+  private List<String> paths;
   private DMatrixGenerator dMatrixGenerator;
 
-  DMatrixFileWorker(String path, DMatrixGenerator dMatrixGenerator) {
-    this.path = path;
+  DMatrixFileWorker(List<String> paths, DMatrixGenerator dMatrixGenerator) {
+    this.paths = paths;
     this.dMatrixGenerator = dMatrixGenerator;
   }
 
   public void run() {
-    BufferedReader fileReader = this.dMatrixGenerator.getReader(this.path);
+    for (String path : this.paths) {
+      this.processFile(path);
+    }
+  }
+
+  public void processFile(String path) {
+    BufferedReader fileReader = this.dMatrixGenerator.getReader(path);
     System.out.print("Processing file ");
-    System.out.println(this.path);
+    System.out.println(path);
     try {
       String line;
       while ( (line = fileReader.readLine()) != null) {
@@ -285,6 +328,7 @@ class DMatrixFileWorker implements Runnable {
           continue;
         }
         List<Integer[]> context = this.dMatrixGenerator.getContext(tokens);
+        //TODO: The order of data structure usage is probably not optimal here.
         for (String target : strTokens) {
           if (this.dMatrixGenerator.targets.contains(target)) {
             if (this.dMatrixGenerator.wordMap.containsKey(target)) {
@@ -309,27 +353,31 @@ class DMatrixFileWorker implements Runnable {
 
 }
 
-class DMatrixEntry {
+class DMatrixCell {
   int x;
   int y;
-  Map<String,Float> words;
+  Map<String,Float> entries;
 
-  DMatrixEntry(int x, int y) {
+  DMatrixCell(int x, int y) {
     this.x = x;
     this.y = y;
-    this.words = new HashMap<String,Float>();
+    this.entries = new HashMap<String,Float>();
   }
 
-  float getEntry(String word) {
-    return 0.0f;
+  float getEntry(String target) {
+    return this.entries.get(target);
   }
 
-  void updateEntry(String word, float diff) {
+  Set<Map.Entry<String,Float>> getAllEntries() {
+    return this.entries.entrySet();
+  }
+
+  void updateEntry(String target, float diff) {
     synchronized(this) {
-      if (this.words.containsKey(word)) {
-        this.words.put(word, this.words.get(word) + diff);
+      if (this.entries.containsKey(target)) {
+        this.entries.put(target, this.entries.get(target) + diff);
       } else {
-        this.words.put(word, diff);
+        this.entries.put(target, diff);
       }
     }
   }

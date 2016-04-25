@@ -31,5 +31,5 @@ esac
 shift
 done
 
-java -cp build/libs/density-matrix-generator.jar DMatrixGenerator $CORPUS_PATH $TARGETS $NUM_THREADS $STOPWORDS
+java -cp runtime/protobuf-java-2.6.1.jar -jar build/libs/density-matrix-generator.jar $CORPUS_PATH $TARGETS $NUM_THREADS $STOPWORDS
 
