@@ -29,45 +29,30 @@ import java.io.FileInputStream;
 
 public class DMatrixGenerator {
 
-  private String root;
+  // Runtime parameters.
+  private String corpusRoot;
   private int numThreads;
   private int dim;
-  protected Map<String,Integer> wordMap;
-  private Set<String> stopWords;
   protected Set<String> targets;
+  private Set<String> stopWords;
+
+  protected Map<String,Integer> wordMap;
   private DMatrixCell[][] densityMatrices;
 
   public static void main(String[] args) {
-    DMatrixGenerator dmg;
-    if (args.length == 2) {
-      dmg = new DMatrixGenerator(args[0], Integer.parseInt(args[1]));
-    } else if (args.length == 4) {
-      dmg = new DMatrixGenerator(args[0], args[1], Integer.parseInt(args[2]), args[3]);
-    } else {
-      return;
-    }
+    DMatrixGenerator dmg = new DMatrixGenerator(args[0], args[1],
+        Integer.parseInt(args[2]), Integer.parseInt(args[3]), args[4]);
     dmg.generateMatrices();
-    dmg.outputMatrices("tmp");
-    try {
-      DMatrixList dm = DMatrixList.parseFrom(new FileInputStream("matrices.dat"));
-      System.out.println(dm);
-    } catch (IOException e) {
-    }
+    dmg.outputMatrices(args[5]);
   }
 
-  DMatrixGenerator(String root, int numThreads) {
-    this.root = root;
+  DMatrixGenerator(String corpusRoot, String targetsPath,
+      int dim, int numThreads, String stopListPath) {
+    this.corpusRoot = corpusRoot;
     this.numThreads = numThreads;
-    this.stopWords = null;
-    this.dim = 2000;
-  }
-
-  DMatrixGenerator(String root, String targets, int numThreads, String stopListPath) {
-    this.root = root;
-    this.numThreads = numThreads;
-    this.dim = 200;
+    this.dim = dim;
     this.loadStopList(stopListPath);
-    this.loadTargets(targets);
+    this.loadTargets(targetsPath);
     this.densityMatrices = new DMatrixCell[this.dim][];
     for (int i = 0; i < this.dim; i++) {
       this.densityMatrices[i] = new DMatrixCell[this.dim - i];
@@ -229,7 +214,7 @@ public class DMatrixGenerator {
   }
 
   public void generateMatrices() {
-    List<String> filePaths = getFilePaths(this.root);
+    List<String> filePaths = getFilePaths(this.corpusRoot);
     int partitionSize = (int) Math.ceil((float) filePaths.size() / this.numThreads);
     List<List<String>> filePathPartitions = new ArrayList<List<String>>();
     for (int i = 0; i < filePaths.size(); i += partitionSize) {
