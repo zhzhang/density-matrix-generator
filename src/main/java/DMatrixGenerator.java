@@ -300,8 +300,6 @@ class DMatrixFileWorker implements Runnable {
 
   public void processFile(String path) {
     BufferedReader fileReader = this.dMatrixGenerator.getReader(path);
-    System.out.print("Processing file ");
-    System.out.println(path);
     try {
       String line;
       while ( (line = fileReader.readLine()) != null) {
