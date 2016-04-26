@@ -26,9 +26,6 @@ import java.util.zip.GZIPInputStream;
 import dmatrix.DensityMatrix.DMatrixList;
 import dmatrix.DensityMatrix.DMatrix;
 
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-
 public class DMatrixGenerator {
 
   // Runtime parameters.
@@ -320,8 +317,8 @@ class DMatrixFileWorker implements Runnable {
             if (this.dMatrixGenerator.wordMap.containsKey(target)) {
               int targetIndex = this.dMatrixGenerator.wordMap.get(target);
               for (Integer[] data : context) {
-                int xCount = data[0].equals(targetIndex) ? data[1] : (data[1]-1);
-                int yCount = data[2].equals(targetIndex) ? data[3] : (data[3]-1);
+                int xCount = data[0].equals(targetIndex) ? (data[1]-1) : data[1];
+                int yCount = data[2].equals(targetIndex) ? (data[3]-1) : data[3];
                 this.dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount);
               }
             } else {
@@ -365,9 +362,6 @@ class DMatrixCell {
         this.entries.put(target, diff);
       } else {
         this.entries.put(target, prev + diff);
-      }
-      if (this.x == 1 & this.y == 1 & target.equals("animal")) {
-        System.out.println(this.entries.get(target));
       }
     }
   }
