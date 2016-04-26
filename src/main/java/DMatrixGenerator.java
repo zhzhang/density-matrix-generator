@@ -276,7 +276,7 @@ public class DMatrixGenerator {
     }
     outputList.setDimension(this.dim);
     try {
-      FileOutputStream outputStream = new FileOutputStream("matrices.dat");
+      FileOutputStream outputStream = new FileOutputStream(outputPath);
       outputList.build().writeTo(outputStream);
       outputStream.close();
     } catch (IOException e) {
