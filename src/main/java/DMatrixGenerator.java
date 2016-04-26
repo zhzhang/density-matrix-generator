@@ -26,6 +26,9 @@ import java.util.zip.GZIPInputStream;
 import dmatrix.DensityMatrix.DMatrixList;
 import dmatrix.DensityMatrix.DMatrix;
 
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+
 public class DMatrixGenerator {
 
   // Runtime parameters.
@@ -50,29 +53,28 @@ public class DMatrixGenerator {
     this.corpusRoot = corpusRoot;
     this.numThreads = numThreads;
     this.dim = dim;
+    this.stopWords = new HashSet<String>();
     this.loadStopList(stopListPath);
     this.loadTargets(targetsPath);
     this.densityMatrices = new DMatrixCell[this.dim][];
     for (int i = 0; i < this.dim; i++) {
       this.densityMatrices[i] = new DMatrixCell[this.dim - i];
       for (int j = 0; j < this.dim - i; j++) {
-        this.densityMatrices[i][j] = new DMatrixCell(i,j);
+        this.densityMatrices[i][j] = new DMatrixCell(i,j + i);
       }
     }
   }
 
   private void loadStopList(String stopListPath) {
     BufferedReader br = this.getReader(stopListPath);
-    Set<String> stopWords = new HashSet<String>();
     try {
       String word;
       while ( (word = br.readLine()) != null) {
-        stopWords.add(word);
+        this.stopWords.add(word);
       }
     } catch (IOException e) {
       e.printStackTrace();
     }
-    this.stopWords = stopWords;
   }
 
   private void loadTargets(String targetsPath) {
@@ -164,12 +166,15 @@ public class DMatrixGenerator {
     if (line.startsWith("<doc") || line.startsWith("</doc")) {
       return new String[0];
     }
-    String[] tokens = line.replaceAll("[^a-zA-Z\\s]", "").toLowerCase().split("\\s+");
+    String[] tokens = line.replaceAll("[^a-zA-Z0-9\\s]", "").toLowerCase().split("\\s+");
     List<String> output = new ArrayList<String>();
     for (String token : tokens) {
-      if (this.stopWords != null && !this.stopWords.contains(token)) {
-        output.add(token);
+      if (token.length() == 0
+          || this.stopWords.contains(token)
+          || token.matches(".*\\d.*")) {
+        continue;
       }
+      output.add(token);
     }
     return output.toArray(new String[output.size()]);
   }
@@ -236,9 +241,8 @@ public class DMatrixGenerator {
     } catch (InterruptedException e) {
       //TODO: see if graceful exit is possible here
     }
-    System.out.println(
-      String.format("Matrix generation took %d seconds",
-      (System.nanoTime() - startTime) / 1000000000));
+    System.out.println(String.format("Matrix generation took %d seconds",
+        (System.nanoTime() - startTime) / 1000000000));
   }
 
   protected void updateMatrix(String word, int x, int y, int diff) {
@@ -273,6 +277,7 @@ public class DMatrixGenerator {
     for (String target : this.targets) {
       outputList.addMatrices(outputMatrices.get(target));
     }
+    outputList.setDimension(this.dim);
     try {
       FileOutputStream outputStream = new FileOutputStream("matrices.dat");
       outputList.build().writeTo(outputStream);
@@ -355,10 +360,14 @@ class DMatrixCell {
 
   void updateEntry(String target, float diff) {
     synchronized(this) {
-      if (this.entries.containsKey(target)) {
-        this.entries.put(target, this.entries.get(target) + diff);
-      } else {
+      Float prev = this.entries.get(target);
+      if (prev == null) {
         this.entries.put(target, diff);
+      } else {
+        this.entries.put(target, prev + diff);
+      }
+      if (this.x == 1 & this.y == 1 & target.equals("animal")) {
+        System.out.println(this.entries.get(target));
       }
     }
   }

@@ -13,5 +13,6 @@ message DMatrix {
 }
 
 message DMatrixList {
-  repeated DMatrix matrices = 1;
+  required int32 dimension = 1;
+  repeated DMatrix matrices = 2;
 }
