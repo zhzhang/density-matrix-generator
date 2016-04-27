@@ -23,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-import dmatrix.DensityMatrix.DMatrixList;
-import dmatrix.DensityMatrix.DMatrix;
+import dmatrix.DensityMatrixDense.DMatrixListDense;
+import dmatrix.DensityMatrixDense.DMatrixDense;
 
 public class DMatrixGenerator {
 
@@ -253,21 +253,23 @@ public class DMatrixGenerator {
   }
 
   public void outputMatrices(String outputPath) {
-    DMatrixList.Builder outputList = DMatrixList.newBuilder();
-    Map<String,DMatrix.Builder> outputMatrices
-        = new HashMap<String,DMatrix.Builder>();
+    DMatrixListDense.Builder outputList = DMatrixListDense.newBuilder();
+    Map<String,DMatrixDense.Builder> outputMatrices
+        = new HashMap<String,DMatrixDense.Builder>();
     for (String target : this.targets) {
-      DMatrix.Builder targetMatrix = DMatrix.newBuilder();
+      DMatrixDense.Builder targetMatrix = DMatrixDense.newBuilder();
       targetMatrix.setWord(target);
       outputMatrices.put(target, targetMatrix);
     }
     for (DMatrixCell[] tmp : this.densityMatrices) {
       for (DMatrixCell cell : tmp) {
-        for (Map.Entry<String,Float> entry : cell.getAllEntries()) {
-          DMatrix.DMatrixEntry.Builder dMatrixEntry
-              = DMatrix.DMatrixEntry.newBuilder();
-          dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
-          outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
+        for (String target : this.targets) {
+          Float val = cell.getEntry(target);
+          if (val == null) {
+            outputMatrices.get(target).addData(0.0f);
+          } else {
+            outputMatrices.get(target).addData(val);
+          }
         }
       }
     }
@@ -347,7 +349,7 @@ class DMatrixCell {
     this.entries = new HashMap<String,Float>();
   }
 
-  float getEntry(String target) {
+  Float getEntry(String target) {
     return this.entries.get(target);
   }
 
