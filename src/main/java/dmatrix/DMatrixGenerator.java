@@ -1,7 +1,7 @@
 package dmatrix;
 
-import dmatrix.DensityMatrixDense.DMatrixListDense;
-import dmatrix.DensityMatrixDense.DMatrixDense;
+import dmatrix.DensityMatrixSparse.DMatrixListSparse;
+import dmatrix.DensityMatrixSparse.DMatrixSparse;
 import dmatrix.io.IOUtils;
 import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
@@ -177,23 +177,27 @@ public class DMatrixGenerator {
     }
 
     public void outputMatrices(String outputPath) {
-        DMatrixListDense.Builder outputList = DMatrixListDense.newBuilder();
-        Map<String, DMatrixDense.Builder> outputMatrices
-                = new HashMap<String, DMatrixDense.Builder>();
+        long startTime = System.nanoTime();
+        DMatrixListSparse.Builder outputList = DMatrixListSparse.newBuilder();
+        Map<String, DMatrixSparse.Builder> outputMatrices
+                = new HashMap<String, DMatrixSparse.Builder>();
         for (String target : this.targets) {
-            DMatrixDense.Builder targetMatrix = DMatrixDense.newBuilder();
+            DMatrixSparse.Builder targetMatrix = DMatrixSparse.newBuilder();
             targetMatrix.setWord(target);
             outputMatrices.put(target, targetMatrix);
         }
+        System.out.println(String.format("initialization took %d ms",
+                (System.nanoTime() - startTime) / 1000000));
         for (DMatrixCell[] tmp : this.densityMatrices) {
             for (DMatrixCell cell : tmp) {
-                for (String target : this.targets) {
-                    Float val = cell.getEntry(target);
-                    if (val == null) {
-                        outputMatrices.get(target).addData(0.0f);
-                    } else {
-                        outputMatrices.get(target).addData(val);
-                    }
+                for (Map.Entry<String, Float> entry : cell.getAllEntries()) {
+                    startTime = System.nanoTime();
+                    DMatrixSparse.DMatrixEntry.Builder dMatrixEntry
+                            = DMatrixSparse.DMatrixEntry.newBuilder();
+                    dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
+                    outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
+                    System.out.println(String.format("part 2 took %d ms",
+                            (System.nanoTime() - startTime) / 1000000));
                 }
             }
         }
@@ -201,7 +205,6 @@ public class DMatrixGenerator {
             outputList.addMatrices(outputMatrices.get(target));
         }
         outputList.setDimension(this.dim);
-        System.out.println("made it here");
         try {
             FileOutputStream outputStream = new FileOutputStream(outputPath);
             outputList.build().writeTo(outputStream);
@@ -209,7 +212,6 @@ public class DMatrixGenerator {
         } catch (IOException e) {
         }
     }
-
 
     class DMatrixFileWorker implements Runnable {
         private List<String> filePaths;
