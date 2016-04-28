@@ -1,0 +1,11 @@
+package dmatrix;
+
+message DMatrixDense {
+  required string word = 1;
+  repeated float data = 2;
+}
+
+message DMatrixListDense {
+  required int32 dimension = 1;
+  repeated DMatrixDense matrices = 2;
+}
