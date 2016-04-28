@@ -1,6 +1,6 @@
 package dmatrix;
 
-message DMatrix {
+message DMatrixSparse {
   required string word = 1;
 
   message DMatrixEntry {
@@ -12,7 +12,7 @@ message DMatrix {
   repeated DMatrixEntry entries = 2;
 }
 
-message DMatrixList {
+message DMatrixListSparse {
   required int32 dimension = 1;
-  repeated DMatrix matrices = 2;
+  repeated DMatrixSparse matrices = 2;
 }

@@ -177,7 +177,6 @@ public class DMatrixGenerator {
     }
 
     public void outputMatrices(String outputPath) {
-        long startTime = System.nanoTime();
         DMatrixListSparse.Builder outputList = DMatrixListSparse.newBuilder();
         Map<String, DMatrixSparse.Builder> outputMatrices
                 = new HashMap<String, DMatrixSparse.Builder>();
@@ -186,18 +185,13 @@ public class DMatrixGenerator {
             targetMatrix.setWord(target);
             outputMatrices.put(target, targetMatrix);
         }
-        System.out.println(String.format("initialization took %d ms",
-                (System.nanoTime() - startTime) / 1000000));
         for (DMatrixCell[] tmp : this.densityMatrices) {
             for (DMatrixCell cell : tmp) {
                 for (Map.Entry<String, Float> entry : cell.getAllEntries()) {
-                    startTime = System.nanoTime();
                     DMatrixSparse.DMatrixEntry.Builder dMatrixEntry
                             = DMatrixSparse.DMatrixEntry.newBuilder();
                     dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
                     outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
-                    System.out.println(String.format("part 2 took %d ms",
-                            (System.nanoTime() - startTime) / 1000000));
                 }
             }
         }
@@ -256,7 +250,6 @@ public class DMatrixGenerator {
                 }
             }
         }
-
     }
 }
 
