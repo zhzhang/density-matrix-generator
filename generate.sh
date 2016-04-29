@@ -3,6 +3,7 @@ USAGE="usage: corpus_path targets [-h] [-s n] -- generator density matrices
 where:
     -h  show this help text
     -d  dimension of matrices (default: 2000)
+    -v  path to pre-built word vectors
     -j  number of threads to use (default: 1)
     -o  output file (default: ./matrices.dat)
     -s  path to stopwords file"
@@ -12,6 +13,7 @@ TARGETS="$2"
 shift 2
 NUM_THREADS=1
 DIM=2000
+N=4000
 STOPWORDS="stopwords.txt"
 OUTPUT="matrices.dat"
 
@@ -25,24 +27,37 @@ case $key in
     ;;
     -d|--dim)
     DIM="$2"
-    shift # past argument
+    shift
+    ;;
+    -n|--num_vectors)
+    DIM="$2"
+    shift
     ;;
     -j|--jobs)
     NUM_THREADS="$2"
-    shift # past argument
+    shift
     ;;
     -o|--output)
     OUTPUT="$2"
-    shift # past argument
+    shift
     ;;
     -s|--stopwords)
     STOPWORDS="$2"
-    shift # past argument
+    shift
+    ;;
+    -v|--vectors)
+    VECTORS="$2"
+    shift
     ;;
 esac
 shift
 done
 
-java -jar build/libs/density-matrix-generator.jar \
-  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $STOPWORDS $OUTPUT
+if [ ! -z $VECTORS ]; then
+  java -cp build/libs/density-matrix-generator.jar dmatrix.DMatrixGeneratorDense\
+    $CORPUS_PATH $TARGETS $N $VECTORS $NUM_THREADS $STOPWORDS $OUTPUT
+else
+  java -cp build/libs/density-matrix-generator.jar dmatrix.DMatrixGenerator \
+    $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $STOPWORDS $OUTPUT
+fi
 
