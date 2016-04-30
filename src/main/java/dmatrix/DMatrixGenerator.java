@@ -37,17 +37,16 @@ public class DMatrixGenerator {
 
     public static void main(String[] args) {
         DMatrixGenerator dmg = new DMatrixGenerator(args[0], args[1],
-                Integer.parseInt(args[2]), Integer.parseInt(args[3]), args[4]);
+                Integer.parseInt(args[2]), Integer.parseInt(args[3]));
         dmg.generateMatrices();
-        dmg.outputMatrices(args[5]);
+        dmg.writeMatrices(args[4]);
     }
 
-    DMatrixGenerator(String corpusRoot, String targetsPath,
-                     int dim, int numThreads, String stopListPath) {
+    public DMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.dim = dim;
-        this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory(stopListPath);
+        this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
         this.densityMatrices = new DMatrixCell[this.dim][];
         for (int i = 0; i < this.dim; i++) {
@@ -59,7 +58,7 @@ public class DMatrixGenerator {
     }
 
     private void loadTargets(String targetsPath) {
-        this.targets = new HashSet<String>();
+        this.targets = new HashSet<>();
         TextFileReader reader = new TextFileReader(targetsPath);
         String line;
         while ((line = reader.readLine()) != null) {
@@ -71,7 +70,7 @@ public class DMatrixGenerator {
     }
 
     private void generateWordmap(List<String> filePaths) {
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Map<String, Integer> counts = new HashMap<>();
         for (String filePath : filePaths) {
             TokenizedFileReader reader = tokenizedFileReaderFactory.getReader(filePath);
             String[] tokens;
@@ -89,7 +88,7 @@ public class DMatrixGenerator {
                 .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
         ListIterator<Map.Entry<String, Integer>> li = sorted.listIterator(sorted.size());
         int index = 0;
-        Map<String, Integer> wordMap = new HashMap<String, Integer>();
+        Map<String, Integer> wordMap = new HashMap<>();
         while (index < this.dim && li.hasPrevious()) {
             wordMap.put(li.previous().getKey(), index);
             index++;
@@ -98,7 +97,7 @@ public class DMatrixGenerator {
     }
 
     protected List<Integer> strTokensToIndices(String[] strTokens) {
-        List<Integer> output = new ArrayList<Integer>();
+        List<Integer> output = new ArrayList<>();
         for (int i = 0; i < strTokens.length; i++) {
             if (this.wordMap.containsKey(strTokens[i])) {
                 output.add(this.wordMap.get(strTokens[i]));
@@ -108,7 +107,7 @@ public class DMatrixGenerator {
     }
 
     protected List<Integer[]> getContext(List<Integer> sentence) {
-        Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> counts = new HashMap<>();
         for (int index : sentence) {
             if (counts.containsKey(index)) {
                 counts.put(index, counts.get(index) + 1);
@@ -119,7 +118,7 @@ public class DMatrixGenerator {
         List<Integer[]> countList = counts.entrySet().stream()
                 .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
                 .collect(Collectors.toList());
-        List<Integer[]> output = new ArrayList<Integer[]>();
+        List<Integer[]> output = new ArrayList<>();
         int index = 0;
         ListIterator<Integer[]> mainIter = countList.listIterator();
         while (mainIter.hasNext()) {
@@ -137,7 +136,7 @@ public class DMatrixGenerator {
     public void generateMatrices() {
         List<String> filePaths = IOUtils.getFilePaths(this.corpusRoot);
         int partitionSize = (int) Math.ceil((float) filePaths.size() / this.numThreads);
-        List<List<String>> filePathPartitions = new ArrayList<List<String>>();
+        List<List<String>> filePathPartitions = new ArrayList<>();
         for (int i = 0; i < filePaths.size(); i += partitionSize) {
             filePathPartitions.add(filePaths.subList(i, Math.min(i + partitionSize, filePaths.size())));
         }
@@ -163,7 +162,7 @@ public class DMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    protected void updateMatrix(String word, int x, int y, int diff) {
+    private void updateMatrix(String word, int x, int y, int diff) {
         int min;
         int max;
         if (x < y) {
@@ -176,7 +175,24 @@ public class DMatrixGenerator {
         this.densityMatrices[min][max - min].updateEntry(word, diff);
     }
 
-    public void outputMatrices(String outputPath) {
+    public float[][] getMatrix(String target) {
+        float[][] output = new float[dim][dim];
+        for (int i = 0; i < dim; i++) {
+            for (int j = i; j < dim; j++) {
+                Float val = densityMatrices[i][j-i].getEntry(target);
+                if (val == null) {
+                    output[i][j] = 0.0f;
+                    output[j][i] = 0.0f;
+                } else {
+                    output[i][j] = val;
+                    output[j][i] = val;
+                }
+            }
+        }
+        return output;
+    }
+
+    public void writeMatrices(String outputPath) {
         DMatrixListSparse.Builder outputList = DMatrixListSparse.newBuilder();
         Map<String, DMatrixSparse.Builder> outputMatrices
                 = new HashMap<String, DMatrixSparse.Builder>();
@@ -222,7 +238,7 @@ public class DMatrixGenerator {
             }
         }
 
-        public void processFile(String path) {
+        void processFile(String path) {
             TokenizedFileReader reader = tokenizedFileReaderFactory.getReader(path);
             String[] strTokens;
             while ((strTokens = reader.readLineTokens()) != null) {
@@ -251,34 +267,34 @@ public class DMatrixGenerator {
             }
         }
     }
-}
 
-class DMatrixCell {
-    int x;
-    int y;
-    Map<String, Float> entries;
+    private class DMatrixCell {
+        int x;
+        int y;
+        Map<String, Float> entries;
 
-    DMatrixCell(int x, int y) {
-        this.x = x;
-        this.y = y;
-        this.entries = new HashMap<String, Float>();
-    }
+        DMatrixCell(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.entries = new HashMap<>();
+        }
 
-    Float getEntry(String target) {
-        return entries.get(target);
-    }
+        Set<Map.Entry<String, Float>> getAllEntries() {
+            return entries.entrySet();
+        }
 
-    Set<Map.Entry<String, Float>> getAllEntries() {
-        return entries.entrySet();
-    }
+        float getEntry(String target) {
+            return entries.get(target);
+        }
 
-    void updateEntry(String target, float diff) {
-        synchronized (this) {
-            Float prev = entries.get(target);
-            if (prev == null) {
-                entries.put(target, diff);
-            } else {
-                entries.put(target, prev + diff);
+        void updateEntry(String target, float diff) {
+            synchronized (this) {
+                Float prev = entries.get(target);
+                if (prev == null) {
+                    entries.put(target, diff);
+                } else {
+                    entries.put(target, prev + diff);
+                }
             }
         }
     }

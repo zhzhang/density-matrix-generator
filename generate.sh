@@ -5,8 +5,7 @@ where:
     -d  dimension of matrices (default: 2000)
     -v  path to pre-built word vectors
     -j  number of threads to use (default: 1)
-    -o  output file (default: ./matrices.dat)
-    -s  path to stopwords file"
+    -o  output file (default: ./matrices.dat)"
 
 CORPUS_PATH="$1"
 TARGETS="$2"
@@ -14,7 +13,6 @@ shift 2
 NUM_THREADS=1
 DIM=2000
 N=4000
-STOPWORDS="stopwords.txt"
 OUTPUT="matrices.dat"
 
 while [[ $# > 0 ]]
@@ -39,10 +37,6 @@ case $key in
     ;;
     -o|--output)
     OUTPUT="$2"
-    shift
-    ;;
-    -s|--stopwords)
-    STOPWORDS="$2"
     shift
     ;;
     -v|--vectors)
