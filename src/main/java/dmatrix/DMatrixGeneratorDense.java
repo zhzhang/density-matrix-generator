@@ -32,20 +32,20 @@ public class DMatrixGeneratorDense {
     public static void main(String[] args) {
         DMatrixGeneratorDense dmg = new DMatrixGeneratorDense(args[0], args[1],
                 Integer.parseInt(args[2]),
-                args[3], Integer.parseInt(args[4]), args[5]);
+                args[3], Integer.parseInt(args[4]));
         dmg.generateMatrices();
-        dmg.outputMatrices(args[6]);
+        dmg.outputMatrices(args[5]);
     }
 
     DMatrixGeneratorDense(String corpusRoot, String targetsPath, int numContexts,
-                          String vectorsPath, int numThreads, String stopListPath) {
+                          String vectorsPath, int numThreads) {
         this.numThreads = numThreads;
         this.numContexts = numContexts;
-        this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory(stopListPath);
+        this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
         this.filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         this.generateWordmap(vectorsPath);
-        this.densityMatrices = new HashMap<String, float[][]>();
+        this.densityMatrices = new HashMap<>();
         for (String target : this.targets) {
             float[][] initialMatrix = new float[this.dim][];
             for (int i = 0; i < this.dim; i++) {
@@ -146,8 +146,15 @@ public class DMatrixGeneratorDense {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    protected void updateMatrix(String word, float[] context) {
-        float[][] prev = this.densityMatrices.get(word);
+    protected void updateMatrix(String target, float[] baseContext) {
+        float[] context = baseContext;
+        float[] targetVector = wordMap.get(target);
+        if (targetVector != null) {
+            for (int i = 0; i < baseContext.length; i++) {
+                context[i] -= targetVector[i];
+            }
+        }
+        float[][] prev = densityMatrices.get(target);
         synchronized (prev) {
             for (int i = 0; i < this.dim; i++) {
                 for (int j = 0; j < this.dim - i; j++) {
@@ -200,10 +207,10 @@ public class DMatrixGeneratorDense {
             while ((tokens = reader.readLineTokens()) != null) {
                 if (tokens.length == 0)
                     continue;
-                float[] context = this.dMatrixGenerator.getContext(tokens);
+                float[] baseContext = this.dMatrixGenerator.getContext(tokens);
                 for (String target : tokens) {
                     if (dMatrixGenerator.targets.contains(target))
-                        this.dMatrixGenerator.updateMatrix(target, context);
+                        this.dMatrixGenerator.updateMatrix(target, baseContext);
                 }
             }
         }
