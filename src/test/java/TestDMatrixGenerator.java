@@ -27,8 +27,8 @@ public class TestDMatrixGenerator {
         // Test for case where alpha is included in context.
         float[] context1 = new float[]{3, 2, 0};
         float[] context2 = new float[]{2, 2, 1};
-        trueMatrix = TestUtils.sum(TestUtils.outerProduct(context1),
-                TestUtils.scalarProduct(2.0f, TestUtils.outerProduct(context2)));
+        trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
+                TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
         dmg = new DMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 1);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");

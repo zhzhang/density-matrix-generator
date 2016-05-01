@@ -1,7 +1,6 @@
 package dmatrix;
 
-import dmatrix.DensityMatrixDense.DMatrixListDense;
-import dmatrix.DensityMatrixDense.DMatrixDense;
+import dmatrix.DMatrixProtos.DMatrixDense;
 import dmatrix.io.IOUtils;
 import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
@@ -34,10 +33,10 @@ public class DMatrixGeneratorDense {
                 Integer.parseInt(args[2]),
                 args[3], Integer.parseInt(args[4]));
         dmg.generateMatrices();
-        dmg.outputMatrices(args[5]);
+        dmg.writeMatrices(args[5]);
     }
 
-    DMatrixGeneratorDense(String corpusRoot, String targetsPath, int numContexts,
+    public DMatrixGeneratorDense(String corpusRoot, String targetsPath, int numContexts,
                           String vectorsPath, int numThreads) {
         this.numThreads = numThreads;
         this.numContexts = numContexts;
@@ -74,7 +73,7 @@ public class DMatrixGeneratorDense {
     private void generateWordmap(String vectorsPath) {
         System.out.println("Generating wordmap...");
         long startTime = System.nanoTime();
-        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Map<String, Integer> counts = new HashMap<>();
 
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
         for (List<String> filePathPartition : this.filePathPartitions) {
@@ -146,8 +145,8 @@ public class DMatrixGeneratorDense {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    protected void updateMatrix(String target, float[] baseContext) {
-        float[] context = baseContext;
+    private void updateMatrix(String target, float[] baseContext) {
+        float[] context = Arrays.copyOf(baseContext, baseContext.length);
         float[] targetVector = wordMap.get(target);
         if (targetVector != null) {
             for (int i = 0; i < baseContext.length; i++) {
@@ -164,29 +163,42 @@ public class DMatrixGeneratorDense {
         }
     }
 
-    public void outputMatrices(String outputPath) {
-        DMatrixListDense.Builder outputList = DMatrixListDense.newBuilder();
+    public float[][] getMatrix(String target) {
+        float[][] output = new float[dim][dim];
+        float[][] data = densityMatrices.get(target);
+        if (data == null) {
+            return null;
+        }
+        for (int i = 0; i < dim; i++) {
+            for (int j = 0; j < dim-i; j++) {
+                output[i][i+j] = output[i+j][i] = data[i][j];
+            }
+        }
+        return output;
+    }
+
+
+    public void writeMatrices(String outputPath) {
         for (String target : targets) {
             DMatrixDense.Builder targetMatrix = DMatrixDense.newBuilder();
             targetMatrix.setWord(target);
+            targetMatrix.setDimension(dim);
             for (float[] tmp : densityMatrices.get(target)) {
                 for (float val : tmp) {
                     targetMatrix.addData(val);
                 }
             }
-            outputList.addMatrices(targetMatrix);
-        }
-        outputList.setDimension(dim);
-        try {
-            FileOutputStream outputStream = new FileOutputStream(outputPath);
-            outputList.build().writeTo(outputStream);
-            outputStream.close();
-        } catch (IOException e) {
-            System.out.println("Failed to write matrices to output.");
+            try {
+                FileOutputStream outputStream = IOUtils.getOutputStream(outputPath, target);
+                targetMatrix.build().writeTo(outputStream);
+                outputStream.close();
+            } catch (IOException e) {
+                System.out.println("Failed to write matrices to output.");
+            }
         }
     }
 
-    class DMatrixFileWorkerDense implements Runnable {
+    private class DMatrixFileWorkerDense implements Runnable {
         private List<String> paths;
         private DMatrixGeneratorDense dMatrixGenerator;
 
@@ -196,30 +208,31 @@ public class DMatrixGeneratorDense {
         }
 
         public void run() {
-            for (String path : this.paths) {
+            for (String path : paths) {
                 this.processFile(path);
             }
         }
 
-        public void processFile(String path) {
+        private void processFile(String path) {
             TokenizedFileReader reader = dMatrixGenerator.tokenizedFileReaderFactory.getReader(path);
             String[] tokens;
             while ((tokens = reader.readLineTokens()) != null) {
                 if (tokens.length == 0)
                     continue;
-                float[] baseContext = this.dMatrixGenerator.getContext(tokens);
+                float[] baseContext = dMatrixGenerator.getContext(tokens);
                 for (String target : tokens) {
-                    if (dMatrixGenerator.targets.contains(target))
-                        this.dMatrixGenerator.updateMatrix(target, baseContext);
+                    if (dMatrixGenerator.targets.contains(target)) {
+                        dMatrixGenerator.updateMatrix(target, baseContext);
+                    }
                 }
             }
         }
     }
 
-    class WordMapFileWorkerDense implements Runnable {
+    private class WordMapFileWorkerDense implements Runnable {
         private List<String> paths;
         private DMatrixGeneratorDense dMatrixGenerator;
-        private Map<String, Integer> totalCounts;
+        private final Map<String, Integer> totalCounts;
 
         WordMapFileWorkerDense(List<String> paths, DMatrixGeneratorDense dMatrixGenerator, Map<String, Integer> totalCounts) {
             this.paths = paths;
@@ -246,15 +259,15 @@ public class DMatrixGeneratorDense {
             }
         }
 
-        public void updateCounts(Map<String, Integer> diff) {
-            synchronized (this.totalCounts) {
+        private void updateCounts(Map<String, Integer> diff) {
+            synchronized (totalCounts) {
                 for (Map.Entry<String, Integer> entry : diff.entrySet()) {
                     String target = entry.getKey();
-                    Integer prev = this.totalCounts.get(target);
+                    Integer prev = totalCounts.get(target);
                     if (prev == null) {
-                        this.totalCounts.put(target, entry.getValue());
+                        totalCounts.put(target, entry.getValue());
                     } else {
-                        this.totalCounts.put(target, prev + entry.getValue());
+                        totalCounts.put(target, prev + entry.getValue());
                     }
                 }
             }
