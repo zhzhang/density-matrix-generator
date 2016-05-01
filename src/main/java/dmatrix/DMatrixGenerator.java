@@ -1,12 +1,12 @@
 package dmatrix;
 
-import dmatrix.DensityMatrixSparse.DMatrixListSparse;
-import dmatrix.DensityMatrixSparse.DMatrixSparse;
+import dmatrix.DMatrixProtos.DMatrixSparse;
 import dmatrix.io.IOUtils;
 import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
 import dmatrix.io.TokenizedFileReaderFactory;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.Runnable;
@@ -134,12 +134,8 @@ public class DMatrixGenerator {
     }
 
     public void generateMatrices() {
-        List<String> filePaths = IOUtils.getFilePaths(this.corpusRoot);
-        int partitionSize = (int) Math.ceil((float) filePaths.size() / this.numThreads);
-        List<List<String>> filePathPartitions = new ArrayList<>();
-        for (int i = 0; i < filePaths.size(); i += partitionSize) {
-            filePathPartitions.add(filePaths.subList(i, Math.min(i + partitionSize, filePaths.size())));
-        }
+        List<String> filePaths = IOUtils.getFilePaths(corpusRoot);
+        List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         System.out.println("Generating wordmap...");
         long startTime = System.nanoTime();
         generateWordmap(filePaths);
@@ -179,7 +175,7 @@ public class DMatrixGenerator {
         float[][] output = new float[dim][dim];
         for (int i = 0; i < dim; i++) {
             for (int j = i; j < dim; j++) {
-                Float val = densityMatrices[i][j-i].getEntry(target);
+                Float val = densityMatrices[i][j - i].getEntry(target);
                 if (val == null) {
                     output[i][j] = 0.0f;
                     output[j][i] = 0.0f;
@@ -193,33 +189,31 @@ public class DMatrixGenerator {
     }
 
     public void writeMatrices(String outputPath) {
-        DMatrixListSparse.Builder outputList = DMatrixListSparse.newBuilder();
         Map<String, DMatrixSparse.Builder> outputMatrices
                 = new HashMap<String, DMatrixSparse.Builder>();
-        for (String target : this.targets) {
+        for (String target : targets) {
             DMatrixSparse.Builder targetMatrix = DMatrixSparse.newBuilder();
             targetMatrix.setWord(target);
+            targetMatrix.setDimension(dim);
             outputMatrices.put(target, targetMatrix);
         }
-        for (DMatrixCell[] tmp : this.densityMatrices) {
+        for (DMatrixCell[] tmp : densityMatrices) {
             for (DMatrixCell cell : tmp) {
                 for (Map.Entry<String, Float> entry : cell.getAllEntries()) {
-                    DMatrixSparse.DMatrixEntry.Builder dMatrixEntry
-                            = DMatrixSparse.DMatrixEntry.newBuilder();
+                    DMatrixSparse.DMatrixEntry.Builder dMatrixEntry = DMatrixSparse.DMatrixEntry.newBuilder();
                     dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
                     outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
                 }
             }
         }
-        for (String target : this.targets) {
-            outputList.addMatrices(outputMatrices.get(target));
-        }
-        outputList.setDimension(this.dim);
-        try {
-            FileOutputStream outputStream = new FileOutputStream(outputPath);
-            outputList.build().writeTo(outputStream);
-            outputStream.close();
-        } catch (IOException e) {
+        for (String target : targets) {
+            try {
+                FileOutputStream outputStream = IOUtils.getOutputStream(outputPath, target);
+                outputMatrices.get(target).build().writeTo(outputStream);
+                outputStream.close();
+            } catch (IOException e) {
+                System.out.println("Failed to write matrices to output.");
+            }
         }
     }
 

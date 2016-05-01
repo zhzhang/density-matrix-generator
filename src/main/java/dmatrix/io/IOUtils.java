@@ -1,6 +1,9 @@
 package dmatrix.io;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,5 +37,19 @@ public class IOUtils {
             filePathPartitions.add(filePaths.subList(i, Math.min(i + partitionSize, filePaths.size())));
         }
         return filePathPartitions;
+    }
+
+    public static FileOutputStream getOutputStream(String outputDir, String target) {
+        File outputDirFile = new File(outputDir);
+        if (!outputDirFile.exists()) {
+            outputDirFile.mkdirs();
+        }
+        FileOutputStream outputStream = null;
+        try {
+            outputStream = new FileOutputStream(Paths.get(outputDir, target + ".dat").toString());
+        } catch (FileNotFoundException e) {
+            System.out.println("Failed to write matrices to output.");
+        }
+        return outputStream;
     }
 }

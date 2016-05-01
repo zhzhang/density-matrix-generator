@@ -3,6 +3,7 @@ USAGE="usage: corpus_path targets [-h] [-s n] -- generator density matrices
 where:
     -h  show this help text
     -d  dimension of matrices (default: 2000)
+    -n  number of context words to use (default: 4000)
     -v  path to pre-built word vectors
     -j  number of threads to use (default: 1)
     -o  output file (default: ./matrices.dat)"
@@ -13,7 +14,7 @@ shift 2
 NUM_THREADS=1
 DIM=2000
 N=4000
-OUTPUT="matrices.dat"
+OUTPUT="matrices"
 
 while [[ $# > 0 ]]
 do
