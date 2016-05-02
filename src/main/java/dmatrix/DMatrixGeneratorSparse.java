@@ -6,53 +6,68 @@ import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
 import dmatrix.io.TokenizedFileReaderFactory;
 
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.Runnable;
 import java.lang.InterruptedException;
-import java.util.ArrayList;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DMatrixGenerator {
+/**
+ * Density matrix generator using sparse updates.
+ * <p>
+ * Created by zhuoranzhang on 4/16/16.
+ */
+public class DMatrixGeneratorSparse {
 
     // Runtime parameters.
     private String corpusRoot;
     private int numThreads;
     private int dim;
+    private boolean getVectors;
     protected Set<String> targets;
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
     protected Map<String, Integer> wordMap;
-    private DMatrixCell[][] densityMatrices;
+    private DataCell[][] densityMatrices;
+    private DataCell[] vectors;
 
     public static void main(String[] args) {
-        DMatrixGenerator dmg = new DMatrixGenerator(args[0], args[1],
-                Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+        String corpusRoot = args[0];
+        String targetsPath = args[1];
+        int dim = Integer.parseInt(args[2]);
+        int numThreads = Integer.parseInt(args[3]);
+        boolean getVectors = (Integer.parseInt(args[4]) == 1);
+        DMatrixGeneratorSparse dmg = new DMatrixGeneratorSparse(corpusRoot, targetsPath, dim, numThreads, getVectors);
         dmg.generateMatrices();
-        dmg.writeMatrices(args[4]);
+        dmg.writeMatrices(args[5]);
+        if (getVectors) {
+            dmg.writeVectors(args[5]);
+        }
     }
 
-    public DMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads) {
+    public DMatrixGeneratorSparse(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.dim = dim;
+        this.getVectors = getVectors;
         this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
-        this.densityMatrices = new DMatrixCell[this.dim][];
-        for (int i = 0; i < this.dim; i++) {
-            this.densityMatrices[i] = new DMatrixCell[this.dim - i];
-            for (int j = 0; j < this.dim - i; j++) {
-                this.densityMatrices[i][j] = new DMatrixCell(i, j + i);
+        this.densityMatrices = new DataCell[dim][];
+        this.vectors = new DataCell[dim];
+        for (int i = 0; i < dim; i++) {
+            this.densityMatrices[i] = new DataCell[dim - i];
+            if (getVectors) {
+                this.vectors[i] = new DataCell();
+            }
+            for (int j = 0; j < dim - i; j++) {
+                this.densityMatrices[i][j] = new DataCell();
             }
         }
     }
@@ -169,13 +184,16 @@ public class DMatrixGenerator {
             max = x;
         }
         this.densityMatrices[min][max - min].updateEntry(word, diff);
+        if (getVectors && x == y) {
+            vectors[x].updateEntry(word, diff);
+        }
     }
 
     public float[][] getMatrix(String target) {
         float[][] output = new float[dim][dim];
         for (int i = 0; i < dim; i++) {
             for (int j = i; j < dim; j++) {
-                Float val = densityMatrices[i][j - i].getEntry(target);
+                Float val = densityMatrices[i][j - i].getValue(target);
                 if (val == null) {
                     output[i][j] = 0.0f;
                     output[j][i] = 0.0f;
@@ -197,11 +215,11 @@ public class DMatrixGenerator {
             targetMatrix.setDimension(dim);
             outputMatrices.put(target, targetMatrix);
         }
-        for (DMatrixCell[] tmp : densityMatrices) {
-            for (DMatrixCell cell : tmp) {
-                for (Map.Entry<String, Float> entry : cell.getAllEntries()) {
+        for (int x = 0; x < dim; x++) {
+            for (int y = x; y < dim; y++) {
+                for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
                     DMatrixSparse.DMatrixEntry.Builder dMatrixEntry = DMatrixSparse.DMatrixEntry.newBuilder();
-                    dMatrixEntry.setX(cell.x).setY(cell.y).setVal(entry.getValue());
+                    dMatrixEntry.setX(x).setY(y).setValue(entry.getValue());
                     outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
                 }
             }
@@ -217,11 +235,48 @@ public class DMatrixGenerator {
         }
     }
 
-    class DMatrixFileWorker implements Runnable {
-        private List<String> filePaths;
-        private DMatrixGenerator dMatrixGenerator;
+    public void writeVectors(String outputPath) {
+        if (!getVectors) {
+            System.out.println("Unable to write vectors, no vectors constructed.");
+            return;
+        }
+        Map<String, Float[]> output = new HashMap<>();
+        for (String target : targets) {
+            output.put(target, new Float[dim]);
+        }
+        for (int i = 0; i < dim; i++) {
+            for (String target : targets) {
+                Float tmp = vectors[i].getValue(target);
+                if (tmp == null) {
+                    output.get(target)[i] = 0.0f;
+                } else {
+                    output.get(target)[i] = vectors[i].getValue(target);
+                }
+            }
+        }
+        try {
+            PrintWriter writer = new PrintWriter(
+                    new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), false);
+            for (Map.Entry<String, Float[]> entry : output.entrySet()) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (float value : entry.getValue()) {
+                    stringBuilder.append(" ");
+                    stringBuilder.append(value);
+                }
+                writer.println(String.format("%s%s", entry.getKey(), stringBuilder.toString()));
+            }
+            writer.flush();
+            writer.close();
+        } catch (FileNotFoundException e) {
+            System.out.println(String.format("File %s could not be created", outputPath));
+        }
+    }
 
-        DMatrixFileWorker(List<String> paths, DMatrixGenerator dMatrixGenerator) {
+    private class DMatrixFileWorker implements Runnable {
+        private List<String> filePaths;
+        private DMatrixGeneratorSparse dMatrixGenerator;
+
+        DMatrixFileWorker(List<String> paths, DMatrixGeneratorSparse dMatrixGenerator) {
             this.filePaths = paths;
             this.dMatrixGenerator = dMatrixGenerator;
         }
@@ -262,14 +317,10 @@ public class DMatrixGenerator {
         }
     }
 
-    private class DMatrixCell {
-        int x;
-        int y;
+    private class DataCell {
         Map<String, Float> entries;
 
-        DMatrixCell(int x, int y) {
-            this.x = x;
-            this.y = y;
+        DataCell() {
             this.entries = new HashMap<>();
         }
 
@@ -277,7 +328,7 @@ public class DMatrixGenerator {
             return entries.entrySet();
         }
 
-        float getEntry(String target) {
+        Float getValue(String target) {
             return entries.get(target);
         }
 
