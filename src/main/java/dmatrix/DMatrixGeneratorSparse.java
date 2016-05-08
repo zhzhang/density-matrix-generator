@@ -6,10 +6,7 @@ import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
 import dmatrix.io.TokenizedFileReaderFactory;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.lang.Runnable;
 import java.lang.InterruptedException;
 import java.nio.file.Paths;
@@ -43,12 +40,16 @@ public class DMatrixGeneratorSparse {
         String targetsPath = args[1];
         int dim = Integer.parseInt(args[2]);
         int numThreads = Integer.parseInt(args[3]);
-        boolean getVectors = (Integer.parseInt(args[4]) == 1);
+        boolean getVectors = (Integer.parseInt(args[5]) == 1);
+        boolean writeWordmap = (Integer.parseInt(args[6]) == 1);
         DMatrixGeneratorSparse dmg = new DMatrixGeneratorSparse(corpusRoot, targetsPath, dim, numThreads, getVectors);
         dmg.generateMatrices();
-        dmg.writeMatrices(args[5]);
+        dmg.writeMatrices(args[4]);
         if (getVectors) {
-            dmg.writeVectors(args[5]);
+            dmg.writeVectors(args[4]);
+        }
+        if (writeWordmap) {
+            dmg.writeWordmap(args[4]);
         }
     }
 
@@ -79,7 +80,7 @@ public class DMatrixGeneratorSparse {
         while ((line = reader.readLine()) != null) {
             String[] tmp = line.split("\\s+");
             for (String s : tmp) {
-                this.targets.add(s);
+                this.targets.add(s.toLowerCase());
             }
         }
     }
@@ -269,6 +270,22 @@ public class DMatrixGeneratorSparse {
             writer.close();
         } catch (FileNotFoundException e) {
             System.out.println(String.format("File %s could not be created", outputPath));
+        }
+    }
+
+    public void writeWordmap(String outputPath) {
+        try {
+            PrintWriter writer = new PrintWriter(
+                    new FileOutputStream(Paths.get(outputPath, "wordmap.txt").toString()), false);
+            List<String> sorted = wordMap.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).collect(Collectors.toList());
+            for (String word : sorted) {
+                writer.println(word);
+            }
+            writer.flush();
+            writer.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Unable to write wordmap.");
         }
     }
 
