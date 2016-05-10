@@ -42,6 +42,6 @@ esac
 shift
 done
 
-java -cp build/libs/density-matrix-generator.jar dmatrix.DMatrixGeneratorDense\
+java -cp build/libs/density-matrix-generator.jar dmatrix.EmbeddingDMatrixGenerator\
   $CORPUS_PATH $TARGETS $N $VECTORS $NUM_THREADS $OUTPUT
 

@@ -1,4 +1,4 @@
-import dmatrix.DMatrixGeneratorDense;
+import dmatrix.EmbeddingDMatrixGenerator;
 import org.junit.Test;
 
 import java.net.URL;
@@ -6,7 +6,7 @@ import java.net.URL;
 /**
  * Created by zhuoranzhang on 5/1/16.
  */
-public class TestDMatrixGeneratorDense {
+public class TestEmbeddingDMatrixGenerator {
     @Test
     public void testMatrixGeneration() {
         URL testData = this.getClass().getResource("/test_data.txt");
@@ -22,7 +22,7 @@ public class TestDMatrixGeneratorDense {
                 TestUtils.matrixScalarProduct(2.0f,
                         TestUtils.outerProduct(TestUtils.vectorSum(TestUtils.vectorScalarProduct(2.0f, beta),
                                 TestUtils.vectorScalarProduct(2.0f, gamma)))));
-        DMatrixGeneratorDense dmg = new DMatrixGeneratorDense(testData.getPath(), testTargets.getPath(),
+        EmbeddingDMatrixGenerator dmg = new EmbeddingDMatrixGenerator(testData.getPath(), testTargets.getPath(),
                 2, testVectors.getPath(), 1);
         dmg.generateMatrices();
         TestUtils.assert2DFloatArrayEquals(trueMatrix, dmg.getMatrix("alpha"));
@@ -36,7 +36,7 @@ public class TestDMatrixGeneratorDense {
                         TestUtils.vectorSum(alpha, TestUtils.vectorSum(
                                 TestUtils.vectorScalarProduct(2.0f, beta),
                                 TestUtils.vectorScalarProduct(2.0f, gamma))))));
-        dmg = new DMatrixGeneratorDense(testData.getPath(), testTargets.getPath(),
+        dmg = new EmbeddingDMatrixGenerator(testData.getPath(), testTargets.getPath(),
                 3, testVectors.getPath(), 1);
         dmg.generateMatrices();
         TestUtils.assert2DFloatArrayEquals(trueMatrix, dmg.getMatrix("alpha"));

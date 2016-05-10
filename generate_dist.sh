@@ -47,6 +47,6 @@ case $key in
 esac
 done
 
-java -cp build/libs/density-matrix-generator.jar dmatrix.DMatrixGeneratorSparse\
+java -cp build/libs/density-matrix-generator.jar dmatrix.DistributionalDMatrixGenerator\
   $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT $VECTORS $WORDMAP
 

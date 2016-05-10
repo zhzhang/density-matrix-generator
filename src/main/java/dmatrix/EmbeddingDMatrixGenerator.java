@@ -6,16 +6,15 @@ import dmatrix.io.TextFileReader;
 import dmatrix.io.TokenizedFileReader;
 import dmatrix.io.TokenizedFileReaderFactory;
 
-import java.io.*;
-import java.lang.Runnable;
-import java.lang.InterruptedException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class DMatrixGeneratorDense {
+public class EmbeddingDMatrixGenerator {
 
     // Runtime parameters.
     private int numThreads;
@@ -29,15 +28,20 @@ public class DMatrixGeneratorDense {
     private Map<String, float[][]> densityMatrices;
 
     public static void main(String[] args) {
-        DMatrixGeneratorDense dmg = new DMatrixGeneratorDense(args[0], args[1],
-                Integer.parseInt(args[2]),
-                args[3], Integer.parseInt(args[4]));
+        String corpusRoot = args[0];
+        String targetsPath = args[1];
+        int numContexts = Integer.parseInt(args[2]);
+        String vectorsPath = args[3];
+        int numThreads = Integer.parseInt(args[4]);
+        String outputPath = args[5];
+        EmbeddingDMatrixGenerator dmg = new EmbeddingDMatrixGenerator(corpusRoot, targetsPath, numContexts,
+                vectorsPath, numThreads);
         dmg.generateMatrices();
-        dmg.writeMatrices(args[5]);
+        dmg.writeMatrices(outputPath);
     }
 
-    public DMatrixGeneratorDense(String corpusRoot, String targetsPath, int numContexts,
-                          String vectorsPath, int numThreads) {
+    public EmbeddingDMatrixGenerator(String corpusRoot, String targetsPath, int numContexts,
+                                     String vectorsPath, int numThreads) {
         this.numThreads = numThreads;
         this.numContexts = numContexts;
         this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
@@ -200,9 +204,9 @@ public class DMatrixGeneratorDense {
 
     private class DMatrixFileWorkerDense implements Runnable {
         private List<String> paths;
-        private DMatrixGeneratorDense dMatrixGenerator;
+        private EmbeddingDMatrixGenerator dMatrixGenerator;
 
-        DMatrixFileWorkerDense(List<String> paths, DMatrixGeneratorDense dMatrixGenerator) {
+        DMatrixFileWorkerDense(List<String> paths, EmbeddingDMatrixGenerator dMatrixGenerator) {
             this.paths = paths;
             this.dMatrixGenerator = dMatrixGenerator;
         }
@@ -231,10 +235,10 @@ public class DMatrixGeneratorDense {
 
     private class WordMapFileWorkerDense implements Runnable {
         private List<String> paths;
-        private DMatrixGeneratorDense dMatrixGenerator;
+        private EmbeddingDMatrixGenerator dMatrixGenerator;
         private final Map<String, Integer> totalCounts;
 
-        WordMapFileWorkerDense(List<String> paths, DMatrixGeneratorDense dMatrixGenerator, Map<String, Integer> totalCounts) {
+        WordMapFileWorkerDense(List<String> paths, EmbeddingDMatrixGenerator dMatrixGenerator, Map<String, Integer> totalCounts) {
             this.paths = paths;
             this.dMatrixGenerator = dMatrixGenerator;
             this.totalCounts = totalCounts;

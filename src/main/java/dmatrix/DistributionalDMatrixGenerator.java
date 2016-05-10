@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * <p>
  * Created by zhuoranzhang on 4/16/16.
  */
-public class DMatrixGeneratorSparse {
+public class DistributionalDMatrixGenerator {
 
     // Runtime parameters.
     private String corpusRoot;
@@ -42,7 +42,7 @@ public class DMatrixGeneratorSparse {
         int numThreads = Integer.parseInt(args[3]);
         boolean getVectors = (Integer.parseInt(args[5]) == 1);
         boolean writeWordmap = (Integer.parseInt(args[6]) == 1);
-        DMatrixGeneratorSparse dmg = new DMatrixGeneratorSparse(corpusRoot, targetsPath, dim, numThreads, getVectors);
+        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads, getVectors);
         dmg.generateMatrices();
         dmg.writeMatrices(args[4]);
         if (getVectors) {
@@ -53,7 +53,7 @@ public class DMatrixGeneratorSparse {
         }
     }
 
-    public DMatrixGeneratorSparse(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
+    public DistributionalDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.dim = dim;
@@ -291,9 +291,9 @@ public class DMatrixGeneratorSparse {
 
     private class DMatrixFileWorker implements Runnable {
         private List<String> filePaths;
-        private DMatrixGeneratorSparse dMatrixGenerator;
+        private DistributionalDMatrixGenerator dMatrixGenerator;
 
-        DMatrixFileWorker(List<String> paths, DMatrixGeneratorSparse dMatrixGenerator) {
+        DMatrixFileWorker(List<String> paths, DistributionalDMatrixGenerator dMatrixGenerator) {
             this.filePaths = paths;
             this.dMatrixGenerator = dMatrixGenerator;
         }

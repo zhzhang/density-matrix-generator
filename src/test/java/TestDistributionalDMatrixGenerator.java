@@ -1,5 +1,5 @@
 import dmatrix.DMatrixProtos.DMatrixSparse;
-import dmatrix.DMatrixGeneratorSparse;
+import dmatrix.DistributionalDMatrixGenerator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -14,7 +14,7 @@ import java.net.URL;
  * <p>
  * Created by zhuoranzhang on 4/29/16.
  */
-public class TestDMatrixGeneratorSparse {
+public class TestDistributionalDMatrixGenerator {
 
     @Test
     public void testMatrixGeneration() {
@@ -26,7 +26,7 @@ public class TestDMatrixGeneratorSparse {
         trueMatrix[0][0] = 17.0f;
         trueMatrix[1][1] = 12.0f;
         trueMatrix[0][1] = trueMatrix[1][0] = 14.0f;
-        DMatrixGeneratorSparse dmg = new DMatrixGeneratorSparse(testData.getPath(), testTargets.getPath(), 2, 1, false);
+        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 1, false);
         dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
@@ -36,7 +36,7 @@ public class TestDMatrixGeneratorSparse {
         float[] context2 = new float[]{2, 2, 1};
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
-        dmg = new DMatrixGeneratorSparse(testData.getPath(), testTargets.getPath(), 3, 1, false);
+        dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 1, false);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
