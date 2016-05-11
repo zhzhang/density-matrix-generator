@@ -29,6 +29,7 @@ public class TestDistributionalDMatrixGenerator {
         DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 1, false);
         dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
+        System.out.println(matrix[0][0]);
         Assert.assertArrayEquals(matrix, trueMatrix);
 
         // Test for case where alpha is included in context.

@@ -16,6 +16,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+
 /**
  * Density matrix generator using sparse updates.
  * <p>
@@ -23,17 +26,19 @@ import java.util.stream.Collectors;
  */
 public class DistributionalDMatrixGenerator {
 
+    private static final float density = 0.22f;
+
     // Runtime parameters.
     private String corpusRoot;
     private int numThreads;
     private int dim;
     private boolean getVectors;
-    protected Set<String> targets;
+    private Set<String> targets;
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
-    protected Map<String, Integer> wordMap;
-    private DataCell[][] densityMatrices;
-    private DataCell[] vectors;
+    private Map<String, Integer> wordMap;
+    private Map<String, Map<Pair<Integer,Integer>, Float>> densityMatrices;
+    private Map<String, Float[]> vectors;
 
     public static void main(String[] args) {
         String corpusRoot = args[0];
@@ -60,16 +65,11 @@ public class DistributionalDMatrixGenerator {
         this.getVectors = getVectors;
         this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
-        this.densityMatrices = new DataCell[dim][];
-        this.vectors = new DataCell[dim];
-        for (int i = 0; i < dim; i++) {
-            this.densityMatrices[i] = new DataCell[dim - i];
-            if (getVectors) {
-                this.vectors[i] = new DataCell();
-            }
-            for (int j = 0; j < dim - i; j++) {
-                this.densityMatrices[i][j] = new DataCell();
-            }
+        this.densityMatrices = new HashMap<>();
+        this.vectors = new HashMap<>();
+        for (String target : targets) {
+            densityMatrices.put(target, new HashMap<>((int) Math.ceil(density * dim * dim / 2)));
+            vectors.put(target, new Float[dim]);
         }
     }
 
@@ -112,11 +112,11 @@ public class DistributionalDMatrixGenerator {
         this.wordMap = wordMap;
     }
 
-    protected List<Integer> strTokensToIndices(String[] strTokens) {
+    private List<Integer> strTokensToIndices(String[] strTokens) {
         List<Integer> output = new ArrayList<>();
-        for (int i = 0; i < strTokens.length; i++) {
-            if (this.wordMap.containsKey(strTokens[i])) {
-                output.add(this.wordMap.get(strTokens[i]));
+        for (String strToken : strTokens) {
+            if (this.wordMap.containsKey(strToken)) {
+                output.add(this.wordMap.get(strToken));
             }
         }
         return output;
@@ -131,22 +131,8 @@ public class DistributionalDMatrixGenerator {
                 counts.put(index, 1);
             }
         }
-        List<Integer[]> countList = counts.entrySet().stream()
-                .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
+        return counts.entrySet().stream().map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
                 .collect(Collectors.toList());
-        List<Integer[]> output = new ArrayList<>();
-        int index = 0;
-        ListIterator<Integer[]> mainIter = countList.listIterator();
-        while (mainIter.hasNext()) {
-            Integer[] current = mainIter.next();
-            ListIterator<Integer[]> innerIter = countList.listIterator(index);
-            while (innerIter.hasNext()) {
-                Integer[] tmp = innerIter.next();
-                output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
-            }
-            index++;
-        }
-        return output;
     }
 
     public void generateMatrices() {
@@ -174,61 +160,65 @@ public class DistributionalDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    private void updateMatrix(String word, int x, int y, int diff) {
-        int min;
-        int max;
-        if (x < y) {
-            min = x;
-            max = y;
-        } else {
-            min = y;
-            max = x;
-        }
-        this.densityMatrices[min][max - min].updateEntry(word, diff);
-        if (getVectors && x == y) {
-            vectors[x].updateEntry(word, diff);
+    private void updateMatrix(String target, List<Integer[]> context) {
+        Map<Pair<Integer, Integer>, Float> matrix = densityMatrices.get(target);
+        Integer targetInd = wordMap.get(target);
+        synchronized (matrix) { // TODO: Unsafe, consider wrapping matrices.
+            int index = 0;
+            for (Integer[] current : context) {
+                ListIterator<Integer[]> innerIter = context.listIterator(index);
+                while (innerIter.hasNext()) {
+                    Integer[] tmp = innerIter.next();
+                    Pair<Integer, Integer> coords = new ImmutablePair(Math.min(current[0], tmp[0]), Math.max(current[0], tmp[0]));
+                    Float prev = matrix.get(coords);
+                    Float value;
+                    if (current[0].equals(targetInd)) {
+                        value = (float) current[1] - 1;
+                    } else {
+                        value = (float) current[1];
+                    }
+                    if (tmp[0].equals(targetInd)) {
+                        value = value * (tmp[1] - 1);
+                    } else {
+                        value = value * tmp[1];
+                    }
+                    if (prev == null) {
+                        matrix.put(coords, value);
+                    } else {
+                        matrix.put(coords, prev + value);
+                    }
+                }
+                index++;
+            }
         }
     }
 
     public float[][] getMatrix(String target) {
         float[][] output = new float[dim][dim];
-        for (int i = 0; i < dim; i++) {
-            for (int j = i; j < dim; j++) {
-                Float val = densityMatrices[i][j - i].getValue(target);
-                if (val == null) {
-                    output[i][j] = 0.0f;
-                    output[j][i] = 0.0f;
-                } else {
-                    output[i][j] = val;
-                    output[j][i] = val;
-                }
-            }
+        for (Map.Entry<Pair<Integer, Integer>, Float> entry : densityMatrices.get(target).entrySet()) {
+            int x = entry.getKey().getLeft();
+            int y = entry.getKey().getRight();
+            output[x][y] = entry.getValue();
+            output[y][x] = entry.getValue();
         }
         return output;
     }
 
     public void writeMatrices(String outputPath) {
-        Map<String, DMatrixSparse.Builder> outputMatrices
-                = new HashMap<String, DMatrixSparse.Builder>();
         for (String target : targets) {
             DMatrixSparse.Builder targetMatrix = DMatrixSparse.newBuilder();
             targetMatrix.setWord(target);
             targetMatrix.setDimension(dim);
-            outputMatrices.put(target, targetMatrix);
-        }
-        for (int x = 0; x < dim; x++) {
-            for (int y = x; y < dim; y++) {
-                for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
-                    DMatrixSparse.DMatrixEntry.Builder dMatrixEntry = DMatrixSparse.DMatrixEntry.newBuilder();
-                    dMatrixEntry.setX(x).setY(y).setValue(entry.getValue());
-                    outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
-                }
+            for (Map.Entry<Pair<Integer, Integer>, Float> entry : densityMatrices.get(target).entrySet()) {
+                DMatrixSparse.DMatrixEntry.Builder dMatrixEntry = DMatrixSparse.DMatrixEntry.newBuilder();
+                dMatrixEntry.setX(entry.getKey().getLeft());
+                dMatrixEntry.setY(entry.getKey().getRight());
+                dMatrixEntry.setValue(entry.getValue());
+                targetMatrix.addEntries(dMatrixEntry.build());
             }
-        }
-        for (String target : targets) {
             try {
                 FileOutputStream outputStream = IOUtils.getOutputStream(outputPath, target);
-                outputMatrices.get(target).build().writeTo(outputStream);
+                targetMatrix.build().writeTo(outputStream);
                 outputStream.close();
             } catch (IOException e) {
                 System.out.println("Failed to write matrices to output.");
@@ -241,24 +231,10 @@ public class DistributionalDMatrixGenerator {
             System.out.println("Unable to write vectors, no vectors constructed.");
             return;
         }
-        Map<String, Float[]> output = new HashMap<>();
-        for (String target : targets) {
-            output.put(target, new Float[dim]);
-        }
-        for (int i = 0; i < dim; i++) {
-            for (String target : targets) {
-                Float tmp = vectors[i].getValue(target);
-                if (tmp == null) {
-                    output.get(target)[i] = 0.0f;
-                } else {
-                    output.get(target)[i] = vectors[i].getValue(target);
-                }
-            }
-        }
         try {
             PrintWriter writer = new PrintWriter(
                     new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), false);
-            for (Map.Entry<String, Float[]> entry : output.entrySet()) {
+            for (Map.Entry<String, Float[]> entry : vectors.entrySet()) {
                 StringBuilder stringBuilder = new StringBuilder();
                 for (float value : entry.getValue()) {
                     stringBuilder.append(" ");
@@ -300,7 +276,7 @@ public class DistributionalDMatrixGenerator {
 
         public void run() {
             for (String path : filePaths) {
-                this.processFile(path);
+                processFile(path);
             }
         }
 
@@ -312,50 +288,11 @@ public class DistributionalDMatrixGenerator {
                 if (tokens.size() == 0) {
                     continue;
                 }
-                List<Integer[]> context = this.dMatrixGenerator.getContext(tokens);
-                //TODO: The order of data structure usage is probably not optimal here.
+                List<Integer[]> context = dMatrixGenerator.getContext(tokens);
                 for (String target : strTokens) {
                     if (dMatrixGenerator.targets.contains(target)) {
-                        if (dMatrixGenerator.wordMap.containsKey(target)) {
-                            int targetIndex = dMatrixGenerator.wordMap.get(target);
-                            for (Integer[] data : context) {
-                                int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
-                                int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount);
-                            }
-                        } else {
-                            for (Integer[] data : context) {
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], data[1] * data[3]);
-                            }
-                        }
+                        dMatrixGenerator.updateMatrix(target, context);
                     }
-                }
-            }
-        }
-    }
-
-    private class DataCell {
-        Map<String, Float> entries;
-
-        DataCell() {
-            this.entries = new HashMap<>();
-        }
-
-        Set<Map.Entry<String, Float>> getAllEntries() {
-            return entries.entrySet();
-        }
-
-        Float getValue(String target) {
-            return entries.get(target);
-        }
-
-        void updateEntry(String target, float diff) {
-            synchronized (this) {
-                Float prev = entries.get(target);
-                if (prev == null) {
-                    entries.put(target, diff);
-                } else {
-                    entries.put(target, prev + diff);
                 }
             }
         }
