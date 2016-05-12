@@ -1,9 +1,6 @@
 package dmatrix.io;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 
@@ -13,7 +10,7 @@ import java.nio.file.Paths;
  * Created by zhuoranzhang on 5/12/16.
  */
 public class SparseDMatrixWriter {
-    private FileOutputStream outputStream;
+    private BufferedOutputStream outputStream;
     private String word;
 
     public SparseDMatrixWriter(String word, String matricesPath) {
@@ -26,7 +23,7 @@ public class SparseDMatrixWriter {
                 }
                 outputFile.createNewFile();
             }
-            outputStream = new FileOutputStream(outputFile, false);
+            outputStream = new BufferedOutputStream(new FileOutputStream(outputFile, false));
         } catch (FileNotFoundException e) {
             System.out.println(String.format("Unable to open file for word: %s.", word));
         } catch (IOException e) {
@@ -39,7 +36,6 @@ public class SparseDMatrixWriter {
             outputStream.write(int2ByteArray(x));
             outputStream.write(int2ByteArray(y));
             outputStream.write(float2ByteArray(value));
-            outputStream.flush();
         } catch (IOException e) {
             System.out.println(String.format("IOException thrown for word: %s. Matrix potentially corrupted.", word));
         }
