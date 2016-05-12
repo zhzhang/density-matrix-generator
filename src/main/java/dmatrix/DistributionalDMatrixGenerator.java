@@ -1,10 +1,6 @@
 package dmatrix;
 
-import dmatrix.DMatrixProtos.DMatrixSparse;
-import dmatrix.io.IOUtils;
-import dmatrix.io.TextFileReader;
-import dmatrix.io.TokenizedFileReader;
-import dmatrix.io.TokenizedFileReaderFactory;
+import dmatrix.io.*;
 
 import java.io.*;
 import java.lang.Runnable;
@@ -208,32 +204,33 @@ public class DistributionalDMatrixGenerator {
     }
 
     public void writeMatrices(String outputPath) {
-        Map<String, DMatrixSparse.Builder> outputMatrices
-                = new HashMap<String, DMatrixSparse.Builder>();
+        long startTime = System.nanoTime();
+        Map<String, SparseDMatrixWriter> outputWriters = new HashMap<>();
         for (String target : targets) {
-            DMatrixSparse.Builder targetMatrix = DMatrixSparse.newBuilder();
-            targetMatrix.setWord(target);
-            targetMatrix.setDimension(dim);
-            outputMatrices.put(target, targetMatrix);
+            outputWriters.put(target, new SparseDMatrixWriter(target, outputPath));
         }
         for (int x = 0; x < dim; x++) {
             for (int y = x; y < dim; y++) {
                 for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
-                    DMatrixSparse.DMatrixEntry.Builder dMatrixEntry = DMatrixSparse.DMatrixEntry.newBuilder();
-                    dMatrixEntry.setX(x).setY(y).setValue(entry.getValue());
-                    outputMatrices.get(entry.getKey()).addEntries(dMatrixEntry.build());
+                    outputWriters.get(entry.getKey()).writeEntry(x, y, entry.getValue());
                 }
             }
         }
+        // Close matrix writers.
         for (String target : targets) {
-            try {
-                FileOutputStream outputStream = IOUtils.getOutputStream(outputPath, target);
-                outputMatrices.get(target).build().writeTo(outputStream);
-                outputStream.close();
-            } catch (IOException e) {
-                System.out.println("Failed to write matrices to output.");
-            }
+            outputWriters.get(target).close();
         }
+        // Write matrix parameters.
+        try {
+            PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
+            writer.println(String.format("%s %d", "dimension", dim));
+            writer.flush();
+            writer.close();
+        } catch (FileNotFoundException e) {
+            System.out.println(String.format("File %s could not be created", outputPath));
+        }
+        System.out.println(String.format("Matrix write took %d seconds",
+                (System.nanoTime() - startTime) / 1000000000));
     }
 
     public void writeVectors(String outputPath) {

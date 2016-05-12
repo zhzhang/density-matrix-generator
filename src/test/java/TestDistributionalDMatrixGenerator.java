@@ -1,4 +1,4 @@
-import dmatrix.DMatrixProtos.DMatrixSparse;
+//import dmatrix.DMatrixProtos.DMatrixSparse;
 import dmatrix.DistributionalDMatrixGenerator;
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,7 +42,7 @@ public class TestDistributionalDMatrixGenerator {
         Assert.assertArrayEquals(matrix, trueMatrix);
 
         // Test writing to file.
-        String outputDir = String.format("tmp_test_matrices_%d", System.nanoTime() / 1000000000);
+        /*String outputDir = String.format("tmp_test_matrices_%d", System.nanoTime() / 1000000000);
         dmg.writeMatrices(outputDir);
         matrix = new float[0][0];
         try {
@@ -61,7 +61,7 @@ public class TestDistributionalDMatrixGenerator {
         Assert.assertArrayEquals(matrix, trueMatrix);
         // Cleanup
         (new File(outputDir + "/alpha.dat")).delete();
-        (new File(outputDir)).delete();
+        (new File(outputDir)).delete();*/
     }
 
 
