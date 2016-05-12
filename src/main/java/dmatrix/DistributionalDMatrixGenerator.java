@@ -174,15 +174,22 @@ public class DistributionalDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    private void updateMatrix(String target, int x, int y, float diff) {
-        Map<Pair<Integer, Integer>, Float> matrix = densityMatrices.get(target);
-        synchronized (matrix) { // TODO: Unsafe, consider wrapping matrices.
-            Pair<Integer, Integer> coords = new ImmutablePair(Math.min(x, y), Math.max(x, y));
-            Float prev = matrix.get(coords);
-            if (prev == null) {
-                matrix.put(coords, diff);
-            } else {
-                matrix.put(coords, prev + diff);
+    private void updateMatrix(String target, List<Integer[]> context) {
+        if (targets.contains(target)) {
+            Map<Pair<Integer, Integer>, Float> matrix = densityMatrices.get(target);
+            synchronized (matrix) { // TODO: Unsafe, consider wrapping matrices.
+                Integer targetIndex = wordMap.get(target);
+                for (Integer[] data : context) {
+                    int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
+                    int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
+                    Pair<Integer, Integer> coords = new ImmutablePair(Math.min(data[0], data[2]), Math.max(data[0], data[2]));
+                    Float prev = matrix.get(coords);
+                    if (prev == null) {
+                        matrix.put(coords, (float) xCount * yCount);
+                    } else {
+                        matrix.put(coords, prev + xCount * yCount);
+                    }
+                }
             }
         }
     }
@@ -286,23 +293,10 @@ public class DistributionalDMatrixGenerator {
                 if (tokens.size() == 0) {
                     continue;
                 }
-                List<Integer[]> context = this.dMatrixGenerator.getContext(tokens);
+                List<Integer[]> context = dMatrixGenerator.getContext(tokens);
                 //TODO: The order of data structure usage is probably not optimal here.
                 for (String target : strTokens) {
-                    if (dMatrixGenerator.targets.contains(target)) {
-                        if (dMatrixGenerator.wordMap.containsKey(target)) {
-                            int targetIndex = dMatrixGenerator.wordMap.get(target);
-                            for (Integer[] data : context) {
-                                int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
-                                int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount);
-                            }
-                        } else {
-                            for (Integer[] data : context) {
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], data[1] * data[3]);
-                            }
-                        }
-                    }
+                    dMatrixGenerator.updateMatrix(target, context);
                 }
             }
         }
