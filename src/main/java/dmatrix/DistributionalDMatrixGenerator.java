@@ -81,33 +81,6 @@ public class DistributionalDMatrixGenerator {
         }
     }
 
-    private void generateWordmap(List<String> filePaths) {
-        Map<String, Integer> counts = new HashMap<>();
-        for (String filePath : filePaths) {
-            TokenizedFileReader reader = tokenizedFileReaderFactory.getReader(filePath);
-            String[] tokens;
-            while ((tokens = reader.readLineTokens()) != null) {
-                for (String token : tokens) {
-                    if (counts.containsKey(token)) {
-                        counts.put(token, counts.get(token) + 1);
-                    } else {
-                        counts.put(token, 1);
-                    }
-                }
-            }
-        }
-        List<Map.Entry<String, Integer>> sorted = counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
-        ListIterator<Map.Entry<String, Integer>> li = sorted.listIterator(sorted.size());
-        int index = 0;
-        Map<String, Integer> wordMap = new HashMap<>();
-        while (index < this.dim && li.hasPrevious()) {
-            wordMap.put(li.previous().getKey(), index);
-            index++;
-        }
-        this.wordMap = wordMap;
-    }
-
     protected List<Integer> strTokensToIndices(String[] strTokens) {
         List<Integer> output = new ArrayList<>();
         for (int i = 0; i < strTokens.length; i++) {
@@ -146,16 +119,18 @@ public class DistributionalDMatrixGenerator {
     }
 
     public void generateMatrices() {
-        List<String> filePaths = IOUtils.getFilePaths(corpusRoot);
-        List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         System.out.println("Generating wordmap...");
         long startTime = System.nanoTime();
-        generateWordmap(filePaths);
+        WordmapGenerator wordmapGenerator
+                = new WordmapGenerator(corpusRoot, tokenizedFileReaderFactory, numThreads, dim);
+        wordMap = wordmapGenerator.generate();
         System.out.println(
                 String.format("Wordmap generation took %d seconds",
                         (System.nanoTime() - startTime) / 1000000000));
+        // Generate matrices.
         System.out.println("Generating matrices...");
         startTime = System.nanoTime();
+        List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
         for (List<String> filePathPartition : filePathPartitions) {
             pool.submit(new DMatrixFileWorker(filePathPartition, this));

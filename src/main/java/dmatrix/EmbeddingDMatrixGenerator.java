@@ -9,18 +9,16 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class EmbeddingDMatrixGenerator {
 
     // Runtime parameters.
+    private String corpusRoot;
     private int numThreads;
     private int dim;
-    private int numContexts;
     private Set<String> targets;
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
-    private List<List<String>> filePathPartitions;
     private Map<String, float[]> wordMap;
     private Map<String, float[][]> densityMatrices;
 
@@ -39,12 +37,15 @@ public class EmbeddingDMatrixGenerator {
 
     public EmbeddingDMatrixGenerator(String corpusRoot, String targetsPath, int numContexts,
                                      String vectorsPath, int numThreads) {
+        this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
-        this.numContexts = numContexts;
         this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
-        this.filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
-        this.generateWordmap(vectorsPath);
+        WordmapGenerator wordmapGenerator
+                = new WordmapGenerator(corpusRoot, tokenizedFileReaderFactory, numThreads, numContexts);
+        this.wordMap = wordmapGenerator.generate(vectorsPath);
+        String tmpTarget = wordMap.keySet().iterator().next();
+        this.dim = wordMap.get(tmpTarget).length;
         this.densityMatrices = new HashMap<>();
         for (String target : this.targets) {
             float[][] initialMatrix = new float[this.dim][];
@@ -71,56 +72,11 @@ public class EmbeddingDMatrixGenerator {
         }
     }
 
-    private void generateWordmap(String vectorsPath) {
-        System.out.println("Generating wordmap...");
-        long startTime = System.nanoTime();
-        Map<String, Integer> counts = new HashMap<>();
-
-        ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
-        for (List<String> filePathPartition : this.filePathPartitions) {
-            pool.submit(new WordMapFileWorkerDense(filePathPartition, this, counts));
-        }
-        pool.shutdown();
-        try {
-            pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            //TODO: see if graceful exit is possible here
-        }
-
-        List<Map.Entry<String, Integer>> sorted = counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
-        ListIterator<Map.Entry<String, Integer>> li = sorted.listIterator(sorted.size());
-        int index = 0;
-        Set<String> topN = new HashSet<>();
-        while (index < this.numContexts && li.hasPrevious()) {
-            topN.add(li.previous().getKey());
-            index++;
-        }
-        TextFileReader reader = new TextFileReader(vectorsPath);
-        Map<String, float[]> wordMap = new HashMap<>();
-        String line;
-        float[] vector = new float[0];
-        while ((line = reader.readLine()) != null) {
-            String[] tokens = line.split("\\s+");
-            if (topN.contains(tokens[0])) {
-                vector = new float[tokens.length - 1];
-                for (int i = 1; i < tokens.length; i++) {
-                    vector[i - 1] = Float.parseFloat(tokens[i]);
-                }
-                wordMap.put(tokens[0], vector);
-            }
-        }
-        this.dim = vector.length;
-        this.wordMap = wordMap;
-        System.out.println(String.format("Wordmap generation took %d seconds",
-                (System.nanoTime() - startTime) / 1000000000));
-    }
-
     protected float[] getContext(String[] tokens) {
         float[] output = new float[this.dim];
         float[] tokenVector;
         for (String token : tokens) {
-            tokenVector = this.wordMap.get(token);
+            tokenVector = wordMap.get(token);
             if (tokenVector == null) continue;
             for (int i = 0; i < output.length; i++) {
                 output[i] += tokenVector[i];
@@ -133,6 +89,7 @@ public class EmbeddingDMatrixGenerator {
         System.out.println("Generating matrices...");
         long startTime = System.nanoTime();
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
+        List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         for (List<String> filePathPartition : filePathPartitions) {
             pool.submit(new DMatrixFileWorkerDense(filePathPartition, this));
         }
@@ -171,8 +128,8 @@ public class EmbeddingDMatrixGenerator {
             return null;
         }
         for (int i = 0; i < dim; i++) {
-            for (int j = 0; j < dim-i; j++) {
-                output[i][i+j] = output[i+j][i] = data[i][j];
+            for (int j = 0; j < dim - i; j++) {
+                output[i][i + j] = output[i + j][i] = data[i][j];
             }
         }
         return output;
@@ -226,49 +183,5 @@ public class EmbeddingDMatrixGenerator {
         }
     }
 
-    private class WordMapFileWorkerDense implements Runnable {
-        private List<String> paths;
-        private EmbeddingDMatrixGenerator dMatrixGenerator;
-        private final Map<String, Integer> totalCounts;
-
-        WordMapFileWorkerDense(List<String> paths, EmbeddingDMatrixGenerator dMatrixGenerator, Map<String, Integer> totalCounts) {
-            this.paths = paths;
-            this.dMatrixGenerator = dMatrixGenerator;
-            this.totalCounts = totalCounts;
-        }
-
-        public void run() {
-            for (String path : this.paths) {
-                Map<String, Integer> counts = new HashMap<String, Integer>();
-                TokenizedFileReader reader = dMatrixGenerator.tokenizedFileReaderFactory.getReader(path);
-                String[] tokens;
-                while ((tokens = reader.readLineTokens()) != null) {
-                    for (String token : tokens) {
-                        Integer prev = counts.get(token);
-                        if (prev == null) {
-                            counts.put(token, 1);
-                        } else {
-                            counts.put(token, prev + 1);
-                        }
-                    }
-                }
-                this.updateCounts(counts);
-            }
-        }
-
-        private void updateCounts(Map<String, Integer> diff) {
-            synchronized (totalCounts) {
-                for (Map.Entry<String, Integer> entry : diff.entrySet()) {
-                    String target = entry.getKey();
-                    Integer prev = totalCounts.get(target);
-                    if (prev == null) {
-                        totalCounts.put(target, entry.getValue());
-                    } else {
-                        totalCounts.put(target, prev + entry.getValue());
-                    }
-                }
-            }
-        }
-    }
 
 }
