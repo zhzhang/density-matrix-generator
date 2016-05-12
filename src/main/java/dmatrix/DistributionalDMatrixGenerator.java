@@ -145,13 +145,14 @@ public class DistributionalDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    private void updateMatrix(String word, int x, int y, int diff) {
+    private void updateMatrix(String word, int x, int y, float diff) {
         int min = Math.min(x, y);
         int max = Math.max(x, y);
         this.densityMatrices[min][max - min].updateEntry(word, diff);
-        if (getVectors && x == y) {
-            vectors[x].updateEntry(word, diff);
-        }
+    }
+
+    private void updateVector(String word, int x, float diff) {
+        vectors[x].updateEntry(word, diff);
     }
 
     public float[][] getMatrix(String target) {
@@ -287,6 +288,9 @@ public class DistributionalDMatrixGenerator {
                                 int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
                                 int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
                                 dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount);
+                                if (getVectors && data[0].equals(data[2])) {
+                                    dMatrixGenerator.updateVector(target, data[0], xCount);
+                                }
                             }
                         } else {
                             for (Integer[] data : context) {

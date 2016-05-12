@@ -1,7 +1,5 @@
 package dmatrix.io;
 
-import dmatrix.SparseDMatrix;
-
 import java.io.IOException;
 
 /**
