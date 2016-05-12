@@ -199,6 +199,7 @@ public class DistributionalDMatrixGenerator {
     }
 
     public void writeMatrices(String outputPath) {
+        long startTime = System.nanoTime();
         for (String target : targets) {
             DMatrixSparse.Builder targetMatrix = DMatrixSparse.newBuilder();
             targetMatrix.setWord(target);
@@ -218,6 +219,9 @@ public class DistributionalDMatrixGenerator {
                 System.out.println("Failed to write matrices to output.");
             }
         }
+        System.out.println(
+                String.format("Matrices written in %d seconds",
+                        (System.nanoTime() - startTime) / 1000000000));
     }
 
     public void writeVectors(String outputPath) {
