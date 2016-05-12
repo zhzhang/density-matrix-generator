@@ -39,18 +39,4 @@ public class IOUtils {
         return filePathPartitions;
     }
 
-    public static FileOutputStream getOutputStream(String outputDir, String target) {
-        File outputDirFile = new File(outputDir);
-        if (!outputDirFile.exists()) {
-            outputDirFile.mkdirs();
-        }
-        FileOutputStream outputStream = null;
-        try {
-            outputStream = new FileOutputStream(Paths.get(outputDir, target + ".dat").toString());
-        } catch (FileNotFoundException e) {
-            System.out.println("Failed to write matrices to output.");
-        }
-        return outputStream;
-    }
-
 }

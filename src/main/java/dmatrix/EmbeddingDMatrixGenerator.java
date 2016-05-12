@@ -1,13 +1,7 @@
 package dmatrix;
 
-import dmatrix.DMatrixProtos.DMatrixDense;
-import dmatrix.io.IOUtils;
-import dmatrix.io.TextFileReader;
-import dmatrix.io.TokenizedFileReader;
-import dmatrix.io.TokenizedFileReaderFactory;
+import dmatrix.io.*;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -184,21 +178,8 @@ public class EmbeddingDMatrixGenerator {
 
     public void writeMatrices(String outputPath) {
         for (String target : targets) {
-            DMatrixDense.Builder targetMatrix = DMatrixDense.newBuilder();
-            targetMatrix.setWord(target);
-            targetMatrix.setDimension(dim);
-            for (float[] tmp : densityMatrices.get(target)) {
-                for (float val : tmp) {
-                    targetMatrix.addData(val);
-                }
-            }
-            try {
-                FileOutputStream outputStream = IOUtils.getOutputStream(outputPath, target);
-                targetMatrix.build().writeTo(outputStream);
-                outputStream.close();
-            } catch (IOException e) {
-                System.out.println("Failed to write matrices to output.");
-            }
+            DenseDMatrixWriter writer = new DenseDMatrixWriter(target, outputPath);
+            writer.writeMatrix(densityMatrices.get(target));
         }
     }
 

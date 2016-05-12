@@ -6,7 +6,7 @@ import java.io.IOException;
 
 /**
  * Serializer for sparse density matrices.
- *
+ * <p>
  * Created by zhuoranzhang on 5/12/16.
  */
 public class SparseDMatrixWriter extends DMatrixWriter {
