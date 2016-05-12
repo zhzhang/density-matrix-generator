@@ -2,6 +2,9 @@ package dmatrix;
 
 import dmatrix.io.*;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -180,6 +183,15 @@ public class EmbeddingDMatrixGenerator {
         for (String target : targets) {
             DenseDMatrixWriter writer = new DenseDMatrixWriter(target, outputPath);
             writer.writeMatrix(densityMatrices.get(target));
+            writer.close();
+        }
+        try {
+            PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
+            writer.println(String.format("%s %d", "dimension", dim));
+            writer.flush();
+            writer.close();
+        } catch (FileNotFoundException e) {
+            System.out.println(String.format("File %s could not be created", outputPath));
         }
     }
 

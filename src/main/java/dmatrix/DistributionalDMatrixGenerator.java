@@ -171,15 +171,8 @@ public class DistributionalDMatrixGenerator {
     }
 
     private void updateMatrix(String word, int x, int y, int diff) {
-        int min;
-        int max;
-        if (x < y) {
-            min = x;
-            max = y;
-        } else {
-            min = y;
-            max = x;
-        }
+        int min = Math.min(x, y);
+        int max = Math.max(x, y);
         this.densityMatrices[min][max - min].updateEntry(word, diff);
         if (getVectors && x == y) {
             vectors[x].updateEntry(word, diff);
