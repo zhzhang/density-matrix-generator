@@ -1,12 +1,7 @@
-//import dmatrix.DMatrixProtos.DMatrixSparse;
 import dmatrix.DistributionalDMatrixGenerator;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.net.URL;
 
 /**
@@ -18,7 +13,7 @@ public class TestDistributionalDMatrixGenerator {
 
     @Test
     public void testMatrixGeneration() {
-        URL testData = this.getClass().getResource("/test_data.txt");
+        URL testData = this.getClass().getResource("/test-data");
         URL testTargets = this.getClass().getResource("/test_targets.txt");
 
         // Test for case where alpha is not included in context.
@@ -26,7 +21,7 @@ public class TestDistributionalDMatrixGenerator {
         trueMatrix[0][0] = 17.0f;
         trueMatrix[1][1] = 12.0f;
         trueMatrix[0][1] = trueMatrix[1][0] = 14.0f;
-        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 1, false);
+        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2, false);
         dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
@@ -36,7 +31,7 @@ public class TestDistributionalDMatrixGenerator {
         float[] context2 = new float[]{2, 2, 1};
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
-        dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 1, false);
+        dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);

@@ -14,7 +14,6 @@ NUM_THREADS=1
 DIM=2000
 OUTPUT="matrices"
 VECTORS=0
-WORDMAP=0
 
 while [[ $# > 0 ]]
 do
@@ -40,13 +39,9 @@ case $key in
     VECTORS=1
     shift
     ;;
-    -w|--wordmap)
-    WORDMAP=1
-    shift
-    ;;
 esac
 done
 
 java -cp build/libs/density-matrix-generator.jar dmatrix.DistributionalDMatrixGenerator\
-  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT $VECTORS $WORDMAP
+  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT $VECTORS
 

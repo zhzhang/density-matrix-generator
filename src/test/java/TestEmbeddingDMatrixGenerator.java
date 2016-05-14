@@ -9,7 +9,7 @@ import java.net.URL;
 public class TestEmbeddingDMatrixGenerator {
     @Test
     public void testMatrixGeneration() {
-        URL testData = this.getClass().getResource("/test_data.txt");
+        URL testData = this.getClass().getResource("/test-data");
         URL testTargets = this.getClass().getResource("/test_targets.txt");
         URL testVectors = this.getClass().getResource("/test_vectors.txt");
         float[] alpha = new float[]{0.0f, 0.1f, 0.2f, 0.3f};

@@ -24,10 +24,10 @@ public class DistributionalDMatrixGenerator {
     private int numThreads;
     private int dim;
     private boolean getVectors;
-    protected Set<String> targets;
+    private Set<String> targets;
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
-    protected Map<String, Integer> wordMap;
+    private Map<String, Integer> wordMap;
     private DataCell[][] densityMatrices;
     private DataCell[] vectors;
 
@@ -37,16 +37,13 @@ public class DistributionalDMatrixGenerator {
         int dim = Integer.parseInt(args[2]);
         int numThreads = Integer.parseInt(args[3]);
         boolean getVectors = (Integer.parseInt(args[5]) == 1);
-        boolean writeWordmap = (Integer.parseInt(args[6]) == 1);
         DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads, getVectors);
         dmg.generateMatrices();
         dmg.writeMatrices(args[4]);
         if (getVectors) {
             dmg.writeVectors(args[4]);
         }
-        if (writeWordmap) {
-            dmg.writeWordmap(args[4]);
-        }
+        dmg.writeWordmap(args[4]);
     }
 
     public DistributionalDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
@@ -70,28 +67,28 @@ public class DistributionalDMatrixGenerator {
     }
 
     private void loadTargets(String targetsPath) {
-        this.targets = new HashSet<>();
+        targets = new HashSet<>();
         TextFileReader reader = new TextFileReader(targetsPath);
         String line;
         while ((line = reader.readLine()) != null) {
             String[] tmp = line.split("\\s+");
             for (String s : tmp) {
-                this.targets.add(s.toLowerCase());
+                targets.add(s.toLowerCase());
             }
         }
     }
 
-    protected List<Integer> strTokensToIndices(String[] strTokens) {
+    private List<Integer> strTokensToIndices(String[] strTokens) {
         List<Integer> output = new ArrayList<>();
-        for (int i = 0; i < strTokens.length; i++) {
-            if (this.wordMap.containsKey(strTokens[i])) {
-                output.add(this.wordMap.get(strTokens[i]));
+        for (String token : strTokens) {
+            if (wordMap.containsKey(token)) {
+                output.add(wordMap.get(token));
             }
         }
         return output;
     }
 
-    protected List<Integer[]> getContext(List<Integer> sentence) {
+    private List<Integer[]> getContext(List<Integer> sentence) {
         Map<Integer, Integer> counts = new HashMap<>();
         for (int index : sentence) {
             if (counts.containsKey(index)) {
@@ -105,9 +102,7 @@ public class DistributionalDMatrixGenerator {
                 .collect(Collectors.toList());
         List<Integer[]> output = new ArrayList<>();
         int index = 0;
-        ListIterator<Integer[]> mainIter = countList.listIterator();
-        while (mainIter.hasNext()) {
-            Integer[] current = mainIter.next();
+        for (Integer[] current : countList) {
             ListIterator<Integer[]> innerIter = countList.listIterator(index);
             while (innerIter.hasNext()) {
                 Integer[] tmp = innerIter.next();
@@ -245,9 +240,7 @@ public class DistributionalDMatrixGenerator {
                     new FileOutputStream(Paths.get(outputPath, "wordmap.txt").toString()), false);
             List<String> sorted = wordMap.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).collect(Collectors.toList());
-            for (String word : sorted) {
-                writer.println(word);
-            }
+            sorted.forEach(writer::println);
             writer.flush();
             writer.close();
         } catch (FileNotFoundException e) {
@@ -265,9 +258,7 @@ public class DistributionalDMatrixGenerator {
         }
 
         public void run() {
-            for (String path : filePaths) {
-                this.processFile(path);
-            }
+            filePaths.forEach(this::processFile);
         }
 
         void processFile(String path) {
