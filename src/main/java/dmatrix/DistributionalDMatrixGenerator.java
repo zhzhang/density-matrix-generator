@@ -88,7 +88,7 @@ public class DistributionalDMatrixGenerator {
         return output;
     }
 
-    private List<Integer[]> getContext(List<Integer> sentence) {
+    private Map<Integer, Integer> getContext(List<Integer> sentence) {
         Map<Integer, Integer> counts = new HashMap<>();
         for (int index : sentence) {
             if (counts.containsKey(index)) {
@@ -97,20 +97,7 @@ public class DistributionalDMatrixGenerator {
                 counts.put(index, 1);
             }
         }
-        List<Integer[]> countList = counts.entrySet().stream()
-                .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
-                .collect(Collectors.toList());
-        List<Integer[]> output = new ArrayList<>();
-        int index = 0;
-        for (Integer[] current : countList) {
-            ListIterator<Integer[]> innerIter = countList.listIterator(index);
-            while (innerIter.hasNext()) {
-                Integer[] tmp = innerIter.next();
-                output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
-            }
-            index++;
-        }
-        return output;
+        return counts;
     }
 
     public void generateMatrices() {
@@ -143,7 +130,7 @@ public class DistributionalDMatrixGenerator {
     private void updateMatrix(String word, int x, int y, float diff) {
         int min = Math.min(x, y);
         int max = Math.max(x, y);
-        this.densityMatrices[min][max - min].updateEntry(word, diff);
+        densityMatrices[min][max - min].updateEntry(word, diff);
     }
 
     private void updateVector(String word, int x, float diff) {
@@ -269,23 +256,41 @@ public class DistributionalDMatrixGenerator {
                 if (tokens.size() == 0) {
                     continue;
                 }
-                List<Integer[]> context = this.dMatrixGenerator.getContext(tokens);
+                Map<Integer, Integer> context = dMatrixGenerator.getContext(tokens);
+                float norm = (float) context.values().stream().mapToDouble(x -> x * x).sum();
                 //TODO: The order of data structure usage is probably not optimal here.
+                List<Integer[]> countList = context.entrySet().stream()
+                        .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
+                        .collect(Collectors.toList());
+                List<Integer[]> pairs = new ArrayList<>();
+                int index = 0;
+                for (Integer[] current : countList) {
+                    ListIterator<Integer[]> innerIter = countList.listIterator(index);
+                    while (innerIter.hasNext()) {
+                        Integer[] tmp = innerIter.next();
+                        pairs.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
+                    }
+                    index++;
+                }
                 for (String target : strTokens) {
                     if (dMatrixGenerator.targets.contains(target)) {
                         if (dMatrixGenerator.wordMap.containsKey(target)) {
                             int targetIndex = dMatrixGenerator.wordMap.get(target);
-                            for (Integer[] data : context) {
+                            float newNorm = norm - 2 * context.get(targetIndex) + 1;
+                            for (Integer[] data : pairs ) {
                                 int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
                                 int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount);
+                                dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount / newNorm);
                                 if (getVectors && data[0].equals(data[2])) {
-                                    dMatrixGenerator.updateVector(target, data[0], xCount);
+                                    dMatrixGenerator.updateVector(target, data[0], xCount / newNorm);
                                 }
                             }
                         } else {
-                            for (Integer[] data : context) {
-                                dMatrixGenerator.updateMatrix(target, data[0], data[2], data[1] * data[3]);
+                            for (Integer[] data : pairs) {
+                                dMatrixGenerator.updateMatrix(target, data[0], data[2], data[1] * data[3] / norm);
+                                if (getVectors && data[0].equals(data[2])) {
+                                    dMatrixGenerator.updateVector(target, data[0], data[1] / norm);
+                                }
                             }
                         }
                     }

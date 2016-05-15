@@ -13,6 +13,7 @@ public class TestDistributionalDMatrixGenerator {
 
     @Test
     public void testMatrixGeneration() {
+        /*
         URL testData = this.getClass().getResource("/test-data");
         URL testTargets = this.getClass().getResource("/test_targets.txt");
 
@@ -34,7 +35,7 @@ public class TestDistributionalDMatrixGenerator {
         dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
-        Assert.assertArrayEquals(matrix, trueMatrix);
+        Assert.assertArrayEquals(matrix, trueMatrix);*/
 
         // Test writing to file.
         /*String outputDir = String.format("tmp_test_matrices_%d", System.nanoTime() / 1000000000);
@@ -57,6 +58,23 @@ public class TestDistributionalDMatrixGenerator {
         // Cleanup
         (new File(outputDir + "/alpha.dat")).delete();
         (new File(outputDir)).delete();*/
+    }
+
+    @Test
+    public void testNormalizedMatrixGeneration() {
+        URL testData = this.getClass().getResource("/test-data");
+        URL testTargets = this.getClass().getResource("/test_targets.txt");
+
+        // Test for case where alpha is not included in context.
+        float[] context1 = TestUtils.normalizeVector(new float[]{3, 2, 0});
+        float[] context2 = TestUtils.normalizeVector(new float[]{2, 2, 1});
+        float[][] trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
+                TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
+        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
+        dmg.generateMatrices();
+        float[][] matrix = dmg.getMatrix("alpha");
+        TestUtils.assert2DFloatArrayEquals(matrix, trueMatrix);
+
     }
 
 
