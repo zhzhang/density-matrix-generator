@@ -157,20 +157,20 @@ public class DistributionalDMatrixGenerator {
     public void writeMatrices(String outputPath) {
         long startTime = System.nanoTime();
         Map<String, SparseDMatrixWriter> outputWriters = new HashMap<>();
-        for (String target : targets) {
-            outputWriters.put(target, new SparseDMatrixWriter(target, outputPath));
-        }
         for (int x = 0; x < dim; x++) {
             for (int y = x; y < dim; y++) {
                 for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
-                    outputWriters.get(entry.getKey()).writeEntry(x, y, entry.getValue());
+                    SparseDMatrixWriter writer = outputWriters.get(entry.getKey());
+                    if (writer == null) {
+                        writer = new SparseDMatrixWriter(entry.getKey(), outputPath);
+                        outputWriters.put(entry.getKey(), writer);
+                    }
+                    writer.writeEntry(x, y, entry.getValue());
                 }
             }
         }
         // Close matrix writers.
-        for (String target : targets) {
-            outputWriters.get(target).close();
-        }
+        outputWriters.values().forEach(SparseDMatrixWriter::close);
         // Write matrix parameters.
         try {
             PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
@@ -194,13 +194,13 @@ public class DistributionalDMatrixGenerator {
             output.put(target, new Float[dim]);
         }
         for (int i = 0; i < dim; i++) {
-            for (String target : targets) {
-                Float tmp = vectors[i].getValue(target);
-                if (tmp == null) {
-                    output.get(target)[i] = 0.0f;
-                } else {
-                    output.get(target)[i] = vectors[i].getValue(target);
+            for (Map.Entry<String, Float> entry : vectors[i].getAllEntries()) {
+                Float[] vector = output.get(entry.getKey());
+                if (vector == null) {
+                    vector = new Float[dim];
+                    output.put(entry.getKey(), vector);
                 }
+                vector[i] = entry.getValue();
             }
         }
         try {
@@ -208,9 +208,13 @@ public class DistributionalDMatrixGenerator {
                     new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), false);
             for (Map.Entry<String, Float[]> entry : output.entrySet()) {
                 StringBuilder stringBuilder = new StringBuilder();
-                for (float value : entry.getValue()) {
+                for (Float value : entry.getValue()) {
                     stringBuilder.append(" ");
-                    stringBuilder.append(value);
+                    if (value == null) {
+                        stringBuilder.append(0);
+                    } else {
+                        stringBuilder.append(value);
+                    }
                 }
                 writer.println(String.format("%s%s", entry.getKey(), stringBuilder.toString()));
             }
