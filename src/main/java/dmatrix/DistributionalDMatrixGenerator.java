@@ -279,11 +279,14 @@ public class DistributionalDMatrixGenerator {
                 for (String target : strTokens) {
                     if (dMatrixGenerator.targets.contains(target)) {
                         if (dMatrixGenerator.wordMap.containsKey(target)) {
-                            int targetIndex = dMatrixGenerator.wordMap.get(target);
+                            Integer targetIndex = dMatrixGenerator.wordMap.get(target);
                             float newNorm = norm - 2 * context.get(targetIndex) + 1;
                             for (Integer[] data : pairs ) {
                                 int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
                                 int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
+                                if (xCount == 0 || yCount == 0) {
+                                    continue;
+                                }
                                 dMatrixGenerator.updateMatrix(target, data[0], data[2], xCount * yCount / newNorm);
                                 if (getVectors && data[0].equals(data[2])) {
                                     dMatrixGenerator.updateVector(target, data[0], xCount / newNorm);
