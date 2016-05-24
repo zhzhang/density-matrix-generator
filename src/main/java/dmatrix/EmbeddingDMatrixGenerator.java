@@ -138,9 +138,18 @@ public class EmbeddingDMatrixGenerator {
 
     public void writeMatrices(String outputPath) {
         for (String target : targets) {
-            DenseDMatrixWriter writer = new DenseDMatrixWriter(target, outputPath);
-            writer.writeMatrix(densityMatrices.get(target));
-            writer.close();
+            float[][] matrix = densityMatrices.get(target);
+            outer:
+            for (float[] row : matrix) {
+                for (float value : row) {
+                    if (value != 0.0) {
+                        DenseDMatrixWriter writer = new DenseDMatrixWriter(target, outputPath);
+                        writer.writeMatrix(matrix);
+                        writer.close();
+                        break outer;
+                    }
+                }
+            }
         }
         try {
             PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
