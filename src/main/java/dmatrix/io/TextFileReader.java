@@ -14,7 +14,6 @@ public class TextFileReader {
 
     public TextFileReader(String filePath) {
         try {
-            BufferedReader br;
             if (IOUtils.getFileExtension(filePath).equals("gz")) {
                 GZIPInputStream gzip = new GZIPInputStream(new FileInputStream(filePath));
                 bufferedReader = new BufferedReader(new InputStreamReader(gzip));
@@ -34,6 +33,14 @@ public class TextFileReader {
         } catch (IOException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public void close() {
+        try {
+            bufferedReader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

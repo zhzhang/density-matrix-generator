@@ -189,6 +189,7 @@ public class EmbeddingDMatrixGenerator {
                     }
                 }
             }
+            reader.close();
         }
     }
 

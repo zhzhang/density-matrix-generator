@@ -295,6 +295,7 @@ public class DistributionalDMatrixGenerator {
                     }
                 }
             }
+            reader.close();
         }
     }
 
