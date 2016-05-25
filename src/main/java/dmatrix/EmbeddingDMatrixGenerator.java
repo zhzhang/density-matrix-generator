@@ -111,11 +111,18 @@ public class EmbeddingDMatrixGenerator {
                 context[i] -= targetVector[i];
             }
         }
+        float norm = 0.0f;
+        for (float val : context) {
+            norm += val * val;
+        }
+        if (norm == 0.0f) {
+            return;
+        }
         float[][] prev = densityMatrices.get(target);
         synchronized (prev) {
             for (int i = 0; i < this.dim; i++) {
                 for (int j = 0; j < this.dim - i; j++) {
-                    prev[i][j] += context[i] * context[i + j];
+                    prev[i][j] += context[i] * context[i + j] / norm;
                 }
             }
         }
