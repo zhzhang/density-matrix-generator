@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 /**
  * Maps context words to specific values.
- *
+ * <p>
  * Created by zhuoranzhang on 5/12/16.
  */
 public class WordmapGenerator {
@@ -54,6 +54,10 @@ public class WordmapGenerator {
                 }
                 wordMap.put(tokens[0], vector);
             }
+        }
+        if (wordMap.size() < numContexts) {
+            System.out.println(String.format(
+                    "WARNING: vectors exist for only %d out of %d context words", wordMap.size(), numContexts));
         }
         return wordMap;
     }

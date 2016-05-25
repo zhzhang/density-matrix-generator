@@ -27,10 +27,10 @@ public class TokenizedFileReader extends TextFileReader {
             return new String[0];
         }
         String[] tokens = line.replaceAll("[^a-zA-Z0-9\\s]", "").toLowerCase().split("\\s+");
-        List<String> output = new ArrayList<String>();
+        List<String> output = new ArrayList<>();
         for (String token : tokens) {
             if (token.length() == 0
-                    || (!(stopWords == null) && this.stopWords.contains(token))
+                    || (!(stopWords == null) && stopWords.contains(token))
                     || token.matches(".*\\d.*")) {
                 continue;
             }
