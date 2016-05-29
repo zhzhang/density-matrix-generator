@@ -43,7 +43,11 @@ public class DependencyDMatrixGenerator {
         this.loadTargets(targetsPath);
         DependencyWordmapGenerator dependencyWordmapGenerator
                 = new DependencyWordmapGenerator(corpusRoot, targets, numThreads);
+        System.out.println("Generating wordmap...");
+        long startTime = System.nanoTime();
         wordMap = dependencyWordmapGenerator.generate();
+        System.out.println(String.format("Wordmap generation took %d seconds",
+                (System.nanoTime() - startTime) / 1000000000));
         densityMatrices = new HashMap<>();
         for (String target : targets) {
             densityMatrices.put(target, new HashMap<>());

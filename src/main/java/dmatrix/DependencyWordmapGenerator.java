@@ -51,7 +51,7 @@ public class DependencyWordmapGenerator {
         }
         List<Map.Entry<String,Integer>> tmp = counts.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
-        System.out.println(tmp);
+        //System.out.println(tmp);
         return tmp.stream().map(Map.Entry::getKey).collect(Collectors.toList());
     }
 
