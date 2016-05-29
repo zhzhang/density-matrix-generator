@@ -25,7 +25,9 @@ public class DependencyDMatrixGenerator {
     private Set<String> targets;
 
     private final Map<String, Integer> wordMap;
-    private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatrices;
+    private DataCell[][] densityMatrices;
+    private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
+    private int cutoff;
 
     public static void main(String[] args) throws IOException {
         String corpusRoot = args[0];
@@ -48,9 +50,12 @@ public class DependencyDMatrixGenerator {
         wordMap = dependencyWordmapGenerator.generate();
         System.out.println(String.format("Wordmap generation took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
-        densityMatrices = new HashMap<>();
+        cutoff = dependencyWordmapGenerator.getCutoff();
+        System.out.println(cutoff);
+        System.out.println(wordMap.size());
+        densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
-            densityMatrices.put(target, new HashMap<>());
+            densityMatricesSparse.put(target, new HashMap<>());
         }
     }
 
@@ -93,7 +98,7 @@ public class DependencyDMatrixGenerator {
         for (Pair<Integer, Integer> outer : intContext) {
             for (Pair<Integer, Integer> inner : intContext.subList(index, intContext.size())) {
                 Pair<Integer, Integer> coords = new ImmutablePair<>(outer.getLeft(), inner.getLeft());
-                Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatrices.get(target);
+                Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
                 synchronized (targetMatrix) {
                     Float prev = targetMatrix.get(coords);
                     if (prev == null) {
@@ -109,7 +114,7 @@ public class DependencyDMatrixGenerator {
     public void writeMatrices(String outputPath) {
         long startTime = System.nanoTime();
         for (String target : targets) {
-            Map<Pair<Integer, Integer>, Float> matrix = densityMatrices.get(target);
+            Map<Pair<Integer, Integer>, Float> matrix = densityMatricesSparse.get(target);
             if (matrix.size() == 0) {
                 continue;
             }
@@ -190,6 +195,33 @@ public class DependencyDMatrixGenerator {
             }
         }
 
+    }
+
+    private class DataCell {
+        Map<String, Float> entries;
+
+        DataCell() {
+            this.entries = new HashMap<>();
+        }
+
+        Set<Map.Entry<String, Float>> getAllEntries() {
+            return entries.entrySet();
+        }
+
+        Float getValue(String target) {
+            return entries.get(target);
+        }
+
+        void updateEntry(String target, float diff) {
+            synchronized (this) {
+                Float prev = entries.get(target);
+                if (prev == null) {
+                    entries.put(target, diff);
+                } else {
+                    entries.put(target, prev + diff);
+                }
+            }
+        }
     }
 
 }

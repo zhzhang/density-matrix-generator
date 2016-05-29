@@ -17,26 +17,16 @@ public class DependencyWordmapGenerator {
     private String corpusRoot;
     private int numThreads;
     private Set<String> targets;
+    private int cutoff;
 
     public DependencyWordmapGenerator(String corpusRoot, Set<String> targets, int numThreads) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.targets = targets;
+        cutoff = 0;
     }
 
     public Map<String, Integer> generate() {
-        List<String> mostFrequent = getMostFrequent();
-        Map<String, Integer> output = new HashMap<>(mostFrequent.size());
-        ListIterator<String> li = mostFrequent.listIterator(mostFrequent.size());
-        int count = 0;
-        while (li.hasPrevious()) {
-            output.put(li.previous(), count);
-            count++;
-        }
-        return output;
-    }
-
-    private List<String> getMostFrequent() {
         Map<String, Integer> counts = new HashMap<>();
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
         List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
@@ -49,10 +39,36 @@ public class DependencyWordmapGenerator {
         } catch (InterruptedException e) {
             //TODO: see if graceful exit is possible here
         }
-        List<Map.Entry<String,Integer>> tmp = counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
-        //System.out.println(tmp);
-        return tmp.stream().map(Map.Entry::getKey).collect(Collectors.toList());
+        Map<String, Integer> output = new HashMap<>(counts.size());
+        ListIterator<Map.Entry<String, Integer>> li = counts.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList()).listIterator(counts.size());
+        int index = 0;
+        int total = counts.values().stream().mapToInt(Integer::intValue).sum();
+        int partialCount = 0;
+        boolean ninety = true;
+        boolean ninetyfive = true;
+        while (li.hasPrevious()) {
+            Map.Entry<String, Integer> entry = li.previous();
+            partialCount += entry.getValue();
+            if (cutoff == 0 && (float) partialCount / total > 0.99) {
+                cutoff = index + 1;
+            }
+            if (ninety && (float) partialCount / total > 0.90) {
+                System.out.println(String.format("90 percent at %d", index+1));
+                ninety = false;
+            } else if (ninetyfive  && (float) partialCount / total > 0.95) {
+                System.out.println(String.format("95 percent at %d", index+1));
+                ninetyfive = false;
+            }
+            output.put(entry.getKey(), index);
+            index++;
+        }
+        //System.out.println(output);
+        return output;
+    }
+
+    public int getCutoff() {
+        return cutoff;
     }
 
     private class CountWorker implements Runnable {
