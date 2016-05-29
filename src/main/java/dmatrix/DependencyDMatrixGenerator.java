@@ -20,13 +20,12 @@ import java.util.stream.Collectors;
 public class DependencyDMatrixGenerator {
 
     // Runtime parameters.
-    private String corpus;
+    private String corpusRoot;
     private int numThreads;
     private Set<String> targets;
 
     private final Map<String, Integer> wordMap;
-    private int wordMapIndex;
-    private Map<String, Map<Pair, Float>> densityMatrices;
+    private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatrices;
 
     public static void main(String[] args) throws IOException {
         String corpusRoot = args[0];
@@ -38,12 +37,13 @@ public class DependencyDMatrixGenerator {
         dmg.writeWordmap(args[3]);
     }
 
-    public DependencyDMatrixGenerator(String corpus, String targetsPath, int numThreads) {
-        this.corpus = corpus;
+    public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int numThreads) {
+        this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.loadTargets(targetsPath);
-        this.wordMap = new HashMap<>();
-        wordMapIndex = 0;
+        DependencyWordmapGenerator dependencyWordmapGenerator
+                = new DependencyWordmapGenerator(corpusRoot, targets, numThreads);
+        wordMap = dependencyWordmapGenerator.generate();
         densityMatrices = new HashMap<>();
         for (String target : targets) {
             densityMatrices.put(target, new HashMap<>());
@@ -66,10 +66,10 @@ public class DependencyDMatrixGenerator {
         // Generate matrices.
         System.out.println("Generating matrices...");
         long startTime = System.nanoTime();
-        SentenceStream sentenceStream = SentenceStream.getStream(corpus);
+        List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         ExecutorService pool = Executors.newFixedThreadPool(numThreads);
-        for (int i = 0; i < numThreads; i++) {
-            pool.submit(new DMatrixSentenceWorker(sentenceStream, this));
+        for (List<String> filePaths : filePathPartitions) {
+            pool.submit(new DMatrixSentenceWorker(filePaths, this));
         }
         pool.shutdown();
         try {
@@ -82,17 +82,6 @@ public class DependencyDMatrixGenerator {
     }
 
     private void updateMatrix(String target, Map<String, Integer> context) {
-        for (String word : context.keySet()) {
-            if (!wordMap.containsKey(word)) {
-                synchronized(wordMap) {
-                    if (!wordMap.containsKey(word)) {
-                        wordMap.put(word, wordMapIndex);
-                        wordMapIndex += 1;
-                    }
-                }
-
-            }
-        }
         List<Pair<Integer, Integer>> intContext = context.entrySet().stream().map(
                 entry -> new ImmutablePair<>(wordMap.get(entry.getKey()), entry.getValue()))
                 .sorted().collect(Collectors.toList());
@@ -100,7 +89,7 @@ public class DependencyDMatrixGenerator {
         for (Pair<Integer, Integer> outer : intContext) {
             for (Pair<Integer, Integer> inner : intContext.subList(index, intContext.size())) {
                 Pair<Integer, Integer> coords = new ImmutablePair<>(outer.getLeft(), inner.getLeft());
-                Map<Pair, Float> targetMatrix = densityMatrices.get(target);
+                Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatrices.get(target);
                 synchronized (targetMatrix) {
                     Float prev = targetMatrix.get(coords);
                     if (prev == null) {
@@ -116,12 +105,12 @@ public class DependencyDMatrixGenerator {
     public void writeMatrices(String outputPath) {
         long startTime = System.nanoTime();
         for (String target : targets) {
-            Map<Pair, Float> matrix = densityMatrices.get(target);
+            Map<Pair<Integer, Integer>, Float> matrix = densityMatrices.get(target);
             if (matrix.size() == 0) {
                 continue;
             }
             SparseDMatrixWriter writer = new SparseDMatrixWriter(target, outputPath);
-            for (Map.Entry<Pair, Float> entry : matrix.entrySet()) {
+            for (Map.Entry<Pair<Integer, Integer>, Float> entry : matrix.entrySet()) {
                 Pair<Integer, Integer> coord = entry.getKey();
                 writer.writeEntry(coord.getLeft(), coord.getRight(), entry.getValue());
             }
@@ -155,44 +144,45 @@ public class DependencyDMatrixGenerator {
     }
 
     private class DMatrixSentenceWorker implements Runnable {
-        private SentenceStream sentenceStream;
-        private DependencyDMatrixGenerator dMatrixGenerator;
+        private List<String> filePaths;
+        private SentenceStreamFactory sentenceStreamFactory;
 
-        DMatrixSentenceWorker(SentenceStream sentenceStream, DependencyDMatrixGenerator dMatrixGenerator) {
-            this.sentenceStream = sentenceStream;
-            this.dMatrixGenerator = dMatrixGenerator;
+        DMatrixSentenceWorker(List<String> filePaths, DependencyDMatrixGenerator dMatrixGenerator) {
+            this.filePaths = filePaths;
+            this.sentenceStreamFactory = new SentenceStreamFactory(dMatrixGenerator.targets);
         }
 
         public void run() {
-            Sentence sentence;
-            while ((sentence = sentenceStream.getSentence()) != null) {
-                processSentence(sentence);
-            }
+            filePaths.forEach(this::processFile);
         }
 
-        private void processSentence(Sentence sentence) {
-            Map<Integer, Map<String, Integer>> relationCounts = new HashMap<>(sentence.size());
-            for (int[] dep : sentence.getDependencies()) {
-                for (int i = 0; i < 2; i++) {
-                    String word1 = sentence.getWord(dep[i]);
-                    String word2 = sentence.getWord(dep[(i + 1) % 2]);
-                    if (dMatrixGenerator.targets.contains(word1)) {
-                        Map<String, Integer> counts = relationCounts.get(dep[i]);
-                        if (counts == null) {
-                            counts = new HashMap<>();
-                            relationCounts.put(dep[i], counts);
-                        }
-                        Integer prev = counts.get(word2);
-                        if (prev == null) {
-                            counts.put(word2, 1);
-                        } else {
-                            counts.put(word2, prev + 1);
+        private void processFile(String path) {
+            SentenceStream sentenceStream = sentenceStreamFactory.getStream(path);
+            Sentence sentence;
+            while ((sentence = sentenceStream.getSentence()) != null) {
+                Map<Integer, Map<String, Integer>> relationCounts = new HashMap<>(sentence.size());
+                for (Integer[] dep : sentence.getDependencies()) {
+                    for (int i = 0; i < 2; i++) {
+                        String word1 = sentence.getWord(dep[i]);
+                        String word2 = sentence.getWord(dep[(i + 1) % 2]);
+                        if (targets.contains(word1)) {
+                            Map<String, Integer> counts = relationCounts.get(dep[i]);
+                            if (counts == null) {
+                                counts = new HashMap<>();
+                                relationCounts.put(dep[i], counts);
+                            }
+                            Integer prev = counts.get(word2);
+                            if (prev == null) {
+                                counts.put(word2, 1);
+                            } else {
+                                counts.put(word2, prev + 1);
+                            }
                         }
                     }
                 }
-            }
-            for (Map.Entry<Integer, Map<String, Integer>> entry : relationCounts.entrySet()) {
-                dMatrixGenerator.updateMatrix(sentence.getWord(entry.getKey()), entry.getValue());
+                for (Map.Entry<Integer, Map<String, Integer>> entry : relationCounts.entrySet()) {
+                    updateMatrix(sentence.getWord(entry.getKey()), entry.getValue());
+                }
             }
         }
 

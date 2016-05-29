@@ -1,30 +1,39 @@
 package dmatrix.io;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Wrapper object for sentence data.
- *
+ * <p>
  * Created by zhuoranzhang on 5/27/16.
  */
 public class Sentence {
 
-    final String[] words;
-    final int[][] dependencies;
+    private final Map<Integer, String> words;
+    private final List<Integer[]> dependencies;
 
-    Sentence(String[] words, int[][] dependencies) {
+    Sentence(Map<Integer, String> words, List<Integer[]> dependencies) {
         this.words = words;
         this.dependencies = dependencies;
     }
 
     public int size() {
-        return words.length;
+        return words.size();
     }
 
-    public int[][] getDependencies() {
+    public List<Integer[]> getDependencies() {
         return dependencies;
     }
 
     public String getWord(int index) {
-        return words[index];
+        return words.get(index);
+    }
+
+    public Set<String> getWords() {
+        return words.values().stream().collect(Collectors.toSet());
     }
 
 }
