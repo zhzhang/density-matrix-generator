@@ -51,11 +51,16 @@ public class DependencyDMatrixGenerator {
         System.out.println(String.format("Wordmap generation took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
         cutoff = dependencyWordmapGenerator.getCutoff();
-        System.out.println(cutoff);
-        System.out.println(wordMap.size());
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
             densityMatricesSparse.put(target, new HashMap<>());
+        }
+        densityMatrices = new DataCell[cutoff][];
+        for (int i = 0; i < cutoff; i++) {
+            densityMatrices[i] = new DataCell[cutoff - i];
+            for (int j = 0; j < cutoff - i; j++) {
+                densityMatrices[i][j] = new DataCell();
+            }
         }
     }
 
@@ -97,34 +102,56 @@ public class DependencyDMatrixGenerator {
         int index = 0;
         for (Pair<Integer, Integer> outer : intContext) {
             for (Pair<Integer, Integer> inner : intContext.subList(index, intContext.size())) {
-                Pair<Integer, Integer> coords = new ImmutablePair<>(outer.getLeft(), inner.getLeft());
-                Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
-                synchronized (targetMatrix) {
-                    Float prev = targetMatrix.get(coords);
-                    if (prev == null) {
-                        targetMatrix.put(coords, (float) outer.getRight() * inner.getRight());
-                    } else {
-                        targetMatrix.put(coords, prev + (float) outer.getRight() * inner.getRight());
+                int x = outer.getLeft();
+                int y = inner.getLeft();
+                if (x < cutoff && y < cutoff) {
+                    densityMatrices[x][y - x]
+                            .updateEntry(target, outer.getRight() * inner.getRight());
+                } else {
+                    Pair<Integer, Integer> coords = new ImmutablePair<>(x, y);
+                    Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
+                    synchronized (targetMatrix) {
+                        Float prev = targetMatrix.get(coords);
+                        if (prev == null) {
+                            targetMatrix.put(coords, (float) outer.getRight() * inner.getRight());
+                        } else {
+                            targetMatrix.put(coords, prev + (float) outer.getRight() * inner.getRight());
+                        }
                     }
                 }
             }
+            index++;
         }
     }
 
     public void writeMatrices(String outputPath) {
         long startTime = System.nanoTime();
-        for (String target : targets) {
+        Map<String, SparseDMatrixWriter> outputWriters = new HashMap<>();
+        for (int x = 0; x < cutoff; x++) {
+            for (int y = x; y < cutoff; y++) {
+                for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
+                    SparseDMatrixWriter writer = outputWriters.get(entry.getKey());
+                    if (writer == null) {
+                        writer = new SparseDMatrixWriter(entry.getKey(), outputPath);
+                        outputWriters.put(entry.getKey(), writer);
+                    }
+                    writer.writeEntry(x, y, entry.getValue());
+                }
+            }
+        }
+        for (String target : outputWriters.keySet()) {
             Map<Pair<Integer, Integer>, Float> matrix = densityMatricesSparse.get(target);
             if (matrix.size() == 0) {
                 continue;
             }
-            SparseDMatrixWriter writer = new SparseDMatrixWriter(target, outputPath);
+            SparseDMatrixWriter writer = outputWriters.get(target);
             for (Map.Entry<Pair<Integer, Integer>, Float> entry : matrix.entrySet()) {
                 Pair<Integer, Integer> coord = entry.getKey();
                 writer.writeEntry(coord.getLeft(), coord.getRight(), entry.getValue());
             }
-            writer.close();
         }
+        // Close matrix writers.
+        outputWriters.values().forEach(SparseDMatrixWriter::close);
         // Write matrix parameters.
         try {
             PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
@@ -194,7 +221,6 @@ public class DependencyDMatrixGenerator {
                 }
             }
         }
-
     }
 
     private class DataCell {
@@ -212,14 +238,12 @@ public class DependencyDMatrixGenerator {
             return entries.get(target);
         }
 
-        void updateEntry(String target, float diff) {
-            synchronized (this) {
-                Float prev = entries.get(target);
-                if (prev == null) {
-                    entries.put(target, diff);
-                } else {
-                    entries.put(target, prev + diff);
-                }
+        synchronized void updateEntry(String target, float diff) {
+            Float prev = entries.get(target);
+            if (prev == null) {
+                entries.put(target, diff);
+            } else {
+                entries.put(target, prev + diff);
             }
         }
     }

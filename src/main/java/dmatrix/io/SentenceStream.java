@@ -15,6 +15,7 @@ import java.util.zip.GZIPInputStream;
  */
 public class SentenceStream {
 
+    private String path;
     private MessageUnpacker unpacker;
     private Set<String> targets;
     private int numSentences;
@@ -23,6 +24,7 @@ public class SentenceStream {
             new String[]{"det", "punct", "mark", "cc", "case", "cop", "root", "dep"}));
 
     public SentenceStream(String path, Set<String> targets) throws IOException {
+        this.path = path;
         this.targets = targets;
         unpacker = MessagePack.newDefaultUnpacker(new GZIPInputStream(new FileInputStream(path)));
         numSentences = (unpacker.unpackArrayHeader());
@@ -34,7 +36,9 @@ public class SentenceStream {
             return null;
         }
         numRead++;
-        //System.out.println(String.format("Processing sentence %d", numRead));
+        if (numRead % 500000 == 0) {
+            System.out.println(String.format("Processing sentence %d for file %s", numRead, path));
+        }
         try {
             unpacker.unpackArrayHeader(); // Unpack the sentence array header.
             int numWords = unpacker.unpackArrayHeader();

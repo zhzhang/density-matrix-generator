@@ -45,21 +45,22 @@ public class DependencyWordmapGenerator {
         int index = 0;
         int total = counts.values().stream().mapToInt(Integer::intValue).sum();
         int partialCount = 0;
+        /*
         boolean ninety = true;
-        boolean ninetyfive = true;
+        boolean ninetyfive = true;*/
         while (li.hasPrevious()) {
             Map.Entry<String, Integer> entry = li.previous();
             partialCount += entry.getValue();
-            if (cutoff == 0 && (float) partialCount / total > 0.99) {
+            if (cutoff == 0 && (float) partialCount / total > 0.95) {
                 cutoff = index + 1;
-            }
+            }/*
             if (ninety && (float) partialCount / total > 0.90) {
                 System.out.println(String.format("90 percent at %d", index+1));
                 ninety = false;
             } else if (ninetyfive  && (float) partialCount / total > 0.95) {
                 System.out.println(String.format("95 percent at %d", index+1));
                 ninetyfive = false;
-            }
+            }*/
             output.put(entry.getKey(), index);
             index++;
         }
