@@ -51,7 +51,7 @@ public class DependencyWordmapGenerator {
         while (li.hasPrevious()) {
             Map.Entry<String, Integer> entry = li.previous();
             partialCount += entry.getValue();
-            if (cutoff == 0 && (float) partialCount / total > 0.95) {
+            if (cutoff == 0 && (float) partialCount / total > 0.85) {
                 cutoff = index + 1;
             }/*
             if (ninety && (float) partialCount / total > 0.90) {

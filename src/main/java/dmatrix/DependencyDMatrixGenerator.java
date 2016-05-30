@@ -51,6 +51,7 @@ public class DependencyDMatrixGenerator {
         System.out.println(String.format("Wordmap generation took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
         cutoff = dependencyWordmapGenerator.getCutoff();
+        System.out.println(String.format("Cutoff is %d", cutoff));
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
             densityMatricesSparse.put(target, new HashMap<>());
