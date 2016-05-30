@@ -28,18 +28,20 @@ public class DependencyDMatrixGenerator {
     private DataCell[][] densityMatrices;
     private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
     private int cutoff;
+    private boolean softCutoff;
 
     public static void main(String[] args) throws IOException {
         String corpusRoot = args[0];
         String targetsPath = args[1];
         int numThreads = Integer.parseInt(args[2]);
-        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(corpusRoot, targetsPath, numThreads);
+        int dim = Integer.parseInt(args[3]);
+        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(corpusRoot, targetsPath, numThreads, dim);
         dmg.generateMatrices();
-        dmg.writeMatrices(args[3]);
-        dmg.writeWordmap(args[3]);
+        dmg.writeMatrices(args[4]);
+        dmg.writeWordmap(args[4]);
     }
 
-    public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int numThreads) {
+    public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int numThreads, int dim) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.loadTargets(targetsPath);
@@ -50,7 +52,13 @@ public class DependencyDMatrixGenerator {
         wordMap = dependencyWordmapGenerator.generate();
         System.out.println(String.format("Wordmap generation took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
-        cutoff = dependencyWordmapGenerator.getCutoff();
+        if (dim < 0) {
+            softCutoff = true;
+            cutoff = dim;
+        } else {
+            softCutoff = false;
+            cutoff = dependencyWordmapGenerator.getCutoff();
+        }
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
             densityMatricesSparse.put(target, new HashMap<>());
@@ -107,7 +115,7 @@ public class DependencyDMatrixGenerator {
                 if (x < cutoff && y < cutoff) {
                     densityMatrices[x][y - x]
                             .updateEntry(target, outer.getRight() * inner.getRight());
-                } else {
+                } else if (softCutoff) {
                     Pair<Integer, Integer> coords = new ImmutablePair<>(x, y);
                     Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
                     synchronized (targetMatrix) {
