@@ -54,11 +54,11 @@ public class DependencyDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
         if (dim < 0) {
             softCutoff = true;
-            cutoff = dim;
-        } else {
-            softCutoff = false;
             cutoff = dependencyWordmapGenerator.getCutoff();
             System.out.println(String.format("Cutoff is %d", cutoff));
+        } else {
+            softCutoff = false;
+            cutoff = dim;
         }
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
