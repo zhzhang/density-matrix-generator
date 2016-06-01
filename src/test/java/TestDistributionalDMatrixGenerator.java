@@ -1,4 +1,4 @@
-import dmatrix.DistributionalDMatrixGenerator;
+import dmatrix.SentenceDMatrixGenerator;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -21,7 +21,7 @@ public class TestDistributionalDMatrixGenerator {
         trueMatrix[0][0] = 17.0f;
         trueMatrix[1][1] = 12.0f;
         trueMatrix[0][1] = trueMatrix[1][0] = 14.0f;
-        DistributionalDMatrixGenerator dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2, false);
+        SentenceDMatrixGenerator dmg = new SentenceDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2, false);
         dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
@@ -31,7 +31,7 @@ public class TestDistributionalDMatrixGenerator {
         float[] context2 = new float[]{2, 2, 1};
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
-        dmg = new DistributionalDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
+        dmg = new SentenceDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
