@@ -17,8 +17,6 @@ import java.util.stream.Collectors;
  */
 public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
 
-    private Map<String, Integer> wordMap;
-
     public static void main(String[] args) {
         String corpusRoot = args[0];
         String targetsPath = args[1];
