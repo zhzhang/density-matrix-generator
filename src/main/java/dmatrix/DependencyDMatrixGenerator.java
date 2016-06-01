@@ -33,15 +33,15 @@ public class DependencyDMatrixGenerator {
     public static void main(String[] args) throws IOException {
         String corpusRoot = args[0];
         String targetsPath = args[1];
-        int numThreads = Integer.parseInt(args[2]);
-        int dim = Integer.parseInt(args[3]);
-        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(corpusRoot, targetsPath, numThreads, dim);
+        int dim = Integer.parseInt(args[2]);
+        int numThreads = Integer.parseInt(args[3]);
+        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads);
         dmg.generateMatrices();
         dmg.writeMatrices(args[4]);
         dmg.writeWordmap(args[4]);
     }
 
-    public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int numThreads, int dim) {
+    public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.loadTargets(targetsPath);
@@ -52,7 +52,7 @@ public class DependencyDMatrixGenerator {
         wordMap = dependencyWordmapGenerator.generate();
         System.out.println(String.format("Wordmap generation took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
-        if (dim < 0) {
+        if (dim <= 0) {
             softCutoff = true;
             cutoff = dependencyWordmapGenerator.getCutoff();
             System.out.println(String.format("Cutoff is %d", cutoff));
@@ -131,6 +131,37 @@ public class DependencyDMatrixGenerator {
             }
             index++;
         }
+    }
+
+    public float[][] getMatrix(String target) {
+        float[][] output;
+        if (softCutoff) {
+            output = new float[wordMap.size()][wordMap.size()];
+        } else {
+            output = new float[cutoff][cutoff];
+        }
+        for (int i = 0; i < cutoff; i++) {
+            for (int j = i; j < cutoff; j++) {
+                Float val = densityMatrices[i][j - i].getValue(target);
+                if (val == null) {
+                    output[i][j] = 0.0f;
+                    output[j][i] = 0.0f;
+                } else {
+                    output[i][j] = val;
+                    output[j][i] = val;
+                }
+            }
+        }
+        if (softCutoff) {
+            Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
+            for (Map.Entry<Pair<Integer, Integer>, Float>  entry : targetMatrix.entrySet()) {
+                int x = entry.getKey().getLeft();
+                int y = entry.getKey().getRight();
+                output[x][y] = entry.getValue();
+                output[y][x] = entry.getValue();
+            }
+        }
+        return output;
     }
 
     public void writeMatrices(String outputPath) {

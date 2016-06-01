@@ -38,5 +38,5 @@ esac
 done
 
 java -cp build/libs/density-matrix-generator.jar dmatrix.DependencyDMatrixGenerator\
-  $CORPUS_PATH $TARGETS $NUM_THREADS $DIM $OUTPUT
+  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT
 
