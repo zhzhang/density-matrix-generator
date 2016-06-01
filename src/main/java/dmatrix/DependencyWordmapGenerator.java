@@ -64,7 +64,6 @@ public class DependencyWordmapGenerator {
             output.put(entry.getKey(), index);
             index++;
         }
-        //System.out.println(output);
         return output;
     }
 

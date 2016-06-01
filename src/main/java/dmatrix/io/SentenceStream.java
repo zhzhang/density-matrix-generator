@@ -21,7 +21,8 @@ public class SentenceStream {
     private int numSentences;
     private int numRead;
     private static Set<String> stopList = new HashSet<>(Arrays.asList(
-            new String[]{"det", "punct", "mark", "cc", "case", "cop", "root", "dep"}));
+            new String[]{"det", "punct", "mark", "cc", "case", "cop", "root", "dep", "expl", "cop",
+            "aux", "case", "root", "auxpass", "discourse"}));
 
     public SentenceStream(String path, Set<String> targets) throws IOException {
         this.path = path;
@@ -48,25 +49,21 @@ public class SentenceStream {
             }
             int numCollapsedDeps = unpacker.unpackArrayHeader();
             List<Integer[]> dependencies = new ArrayList<>(numCollapsedDeps - 1);
-            // Skip the first dependency, assuming the ROOT dependency is always first.
-            unpacker.unpackArrayHeader();
-            unpacker.unpackString();
-            unpacker.unpackInt();
-            unpacker.unpackInt();
             Map<Integer, String> wordMap = new HashMap<>();
-            for (int i = 0; i < numCollapsedDeps - 1; i++) {
+            for (int i = 0; i < numCollapsedDeps; i++) {
                 unpacker.unpackArrayHeader();
-                String relType = unpacker.unpackString();
+                String relType = unpacker.unpackString().split(":")[0].toLowerCase();
                 Integer[] dep = new Integer[2];
                 dep[0] = unpacker.unpackInt() - 1;
                 dep[1] = unpacker.unpackInt() - 1;
-                if (stopList.contains(relType)) {
+                /*if (relType.equals("discourse")) {
+                    System.out.println(words[dep[0]]);
+                    System.out.println(words[dep[1]]);
+                    System.out.println("----");
+                }*/
+                if (dep[0] < 0 || dep[1] < 0 || stopList.contains(relType)) {
                     continue;
                 }
-                /*
-                if (words[dep[0]].equals("``") || words[dep[1]].equals("``")) {
-                    System.out.println(relType);
-                }*/
                 if (targets.contains(words[dep[0]]) || targets.contains(words[dep[1]])) {
                     dependencies.add(dep);
                     wordMap.put(dep[0], words[dep[0]]);
