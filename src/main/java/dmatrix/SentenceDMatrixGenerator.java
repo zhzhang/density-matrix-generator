@@ -2,10 +2,8 @@ package dmatrix;
 
 import dmatrix.io.*;
 
-import java.io.*;
 import java.lang.Runnable;
 import java.lang.InterruptedException;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -17,19 +15,9 @@ import java.util.stream.Collectors;
  * <p>
  * Created by zhuoranzhang on 4/16/16.
  */
-public class SentenceDMatrixGenerator {
-
-    // Runtime parameters.
-    private String corpusRoot;
-    private int numThreads;
-    private int dim;
-    private boolean getVectors;
-    private Set<String> targets;
-    private TokenizedFileReaderFactory tokenizedFileReaderFactory;
+public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
 
     private Map<String, Integer> wordMap;
-    private DataCell[][] densityMatrices;
-    private DataCell[] vectors;
 
     public static void main(String[] args) {
         String corpusRoot = args[0];
@@ -47,84 +35,26 @@ public class SentenceDMatrixGenerator {
     }
 
     public SentenceDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
-        this.corpusRoot = corpusRoot;
-        this.numThreads = numThreads;
-        this.dim = dim;
-        this.getVectors = getVectors;
-        this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
-        this.loadTargets(targetsPath);
-        this.densityMatrices = new DataCell[dim][];
-        this.vectors = new DataCell[dim];
-        for (int i = 0; i < dim; i++) {
-            this.densityMatrices[i] = new DataCell[dim - i];
-            if (getVectors) {
-                this.vectors[i] = new DataCell();
-            }
-            for (int j = 0; j < dim - i; j++) {
-                this.densityMatrices[i][j] = new DataCell();
-            }
-        }
+        super(corpusRoot, targetsPath, dim, numThreads, getVectors);
     }
 
-    private void loadTargets(String targetsPath) {
-        targets = new HashSet<>();
-        TextFileReader reader = new TextFileReader(targetsPath);
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String[] tmp = line.split("\\s+");
-            for (String s : tmp) {
-                targets.add(s.toLowerCase());
-            }
-        }
-    }
-
-    private List<Integer> strTokensToIndices(String[] strTokens) {
-        List<Integer> output = new ArrayList<>();
-        for (String token : strTokens) {
-            if (wordMap.containsKey(token)) {
-                output.add(wordMap.get(token));
-            }
-        }
-        return output;
-    }
-
-    private List<Integer[]> getContext(List<Integer> sentence) {
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (int index : sentence) {
-            if (counts.containsKey(index)) {
-                counts.put(index, counts.get(index) + 1);
-            } else {
-                counts.put(index, 1);
-            }
-        }
-        List<Integer[]> countList = counts.entrySet().stream()
-                .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
-                .collect(Collectors.toList());
-        List<Integer[]> output = new ArrayList<>();
-        int index = 0;
-        for (Integer[] current : countList) {
-            ListIterator<Integer[]> innerIter = countList.listIterator(index);
-            while (innerIter.hasNext()) {
-                Integer[] tmp = innerIter.next();
-                output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
-            }
-            index++;
-        }
-        return output;
-    }
-
-    public void generateMatrices() {
+    void generateWordmap(int dim) {
         System.out.println("Generating wordmap...");
         long startTime = System.nanoTime();
+        TokenizedFileReaderFactory tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         WordmapGenerator wordmapGenerator
                 = new WordmapGenerator(corpusRoot, tokenizedFileReaderFactory, numThreads, dim);
         wordMap = wordmapGenerator.generate();
+        cutoff = dim;
         System.out.println(
                 String.format("Wordmap generation took %d seconds",
                         (System.nanoTime() - startTime) / 1000000000));
+    }
+
+    public void generateMatrices() {
         // Generate matrices.
         System.out.println("Generating matrices...");
-        startTime = System.nanoTime();
+        long startTime = System.nanoTime();
         List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
         for (List<String> filePathPartition : filePathPartitions) {
@@ -150,115 +80,15 @@ public class SentenceDMatrixGenerator {
         vectors[x].updateEntry(word, diff);
     }
 
-    public float[][] getMatrix(String target) {
-        float[][] output = new float[dim][dim];
-        for (int i = 0; i < dim; i++) {
-            for (int j = i; j < dim; j++) {
-                Float val = densityMatrices[i][j - i].getValue(target);
-                if (val == null) {
-                    output[i][j] = 0.0f;
-                    output[j][i] = 0.0f;
-                } else {
-                    output[i][j] = val;
-                    output[j][i] = val;
-                }
-            }
-        }
-        return output;
-    }
-
-    public void writeMatrices(String outputPath) {
-        long startTime = System.nanoTime();
-        Map<String, SparseDMatrixWriter> outputWriters = new HashMap<>();
-        for (int x = 0; x < dim; x++) {
-            for (int y = x; y < dim; y++) {
-                for (Map.Entry<String, Float> entry : densityMatrices[x][y - x].getAllEntries()) {
-                    SparseDMatrixWriter writer = outputWriters.get(entry.getKey());
-                    if (writer == null) {
-                        writer = new SparseDMatrixWriter(entry.getKey(), outputPath);
-                        outputWriters.put(entry.getKey(), writer);
-                    }
-                    writer.writeEntry(x, y, entry.getValue());
-                }
-            }
-        }
-        // Close matrix writers.
-        outputWriters.values().forEach(SparseDMatrixWriter::close);
-        // Write matrix parameters.
-        try {
-            PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
-            writer.println(String.format("%s %d", "dimension", dim));
-            writer.flush();
-            writer.close();
-        } catch (FileNotFoundException e) {
-            System.out.println(String.format("File %s could not be created", outputPath));
-        }
-        System.out.println(String.format("Matrix write took %d seconds",
-                (System.nanoTime() - startTime) / 1000000000));
-    }
-
-    public void writeVectors(String outputPath) {
-        if (!getVectors) {
-            System.out.println("Unable to write vectors, no vectors constructed.");
-            return;
-        }
-        Map<String, Float[]> output = new HashMap<>();
-        for (String target : targets) {
-            output.put(target, new Float[dim]);
-        }
-        for (int i = 0; i < dim; i++) {
-            for (Map.Entry<String, Float> entry : vectors[i].getAllEntries()) {
-                Float[] vector = output.get(entry.getKey());
-                if (vector == null) {
-                    vector = new Float[dim];
-                    output.put(entry.getKey(), vector);
-                }
-                vector[i] = entry.getValue();
-            }
-        }
-        try {
-            PrintWriter writer = new PrintWriter(
-                    new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), false);
-            for (Map.Entry<String, Float[]> entry : output.entrySet()) {
-                StringBuilder stringBuilder = new StringBuilder();
-                for (Float value : entry.getValue()) {
-                    stringBuilder.append(" ");
-                    if (value == null) {
-                        stringBuilder.append(0);
-                    } else {
-                        stringBuilder.append(value);
-                    }
-                }
-                writer.println(String.format("%s%s", entry.getKey(), stringBuilder.toString()));
-            }
-            writer.flush();
-            writer.close();
-        } catch (FileNotFoundException e) {
-            System.out.println(String.format("File %s could not be created", outputPath));
-        }
-    }
-
-    public void writeWordmap(String outputPath) {
-        try {
-            PrintWriter writer = new PrintWriter(
-                    new FileOutputStream(Paths.get(outputPath, "wordmap.txt").toString()), false);
-            List<String> sorted = wordMap.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).collect(Collectors.toList());
-            sorted.forEach(writer::println);
-            writer.flush();
-            writer.close();
-        } catch (FileNotFoundException e) {
-            System.out.println("Unable to write wordmap.");
-        }
-    }
-
     private class DMatrixFileWorker implements Runnable {
         private List<String> filePaths;
         private SentenceDMatrixGenerator dMatrixGenerator;
+        private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
         DMatrixFileWorker(List<String> paths, SentenceDMatrixGenerator dMatrixGenerator) {
             this.filePaths = paths;
             this.dMatrixGenerator = dMatrixGenerator;
+            tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         }
 
         public void run() {
@@ -269,11 +99,11 @@ public class SentenceDMatrixGenerator {
             TokenizedFileReader reader = tokenizedFileReaderFactory.getReader(path);
             String[] strTokens;
             while ((strTokens = reader.readLineTokens()) != null) {
-                List<Integer> tokens = dMatrixGenerator.strTokensToIndices(strTokens);
+                List<Integer> tokens = strTokensToIndices(strTokens);
                 if (tokens.size() == 0) {
                     continue;
                 }
-                List<Integer[]> context = this.dMatrixGenerator.getContext(tokens);
+                List<Integer[]> context = getContext(tokens);
                 //TODO: The order of data structure usage is probably not optimal here.
                 for (String target : strTokens) {
                     if (dMatrixGenerator.targets.contains(target)) {
@@ -297,33 +127,43 @@ public class SentenceDMatrixGenerator {
             }
             reader.close();
         }
-    }
 
-    private class DataCell {
-        Map<String, Float> entries;
-
-        DataCell() {
-            this.entries = new HashMap<>();
-        }
-
-        Set<Map.Entry<String, Float>> getAllEntries() {
-            return entries.entrySet();
-        }
-
-        Float getValue(String target) {
-            return entries.get(target);
-        }
-
-        void updateEntry(String target, float diff) {
-            synchronized (this) {
-                Float prev = entries.get(target);
-                if (prev == null) {
-                    entries.put(target, diff);
+        private List<Integer[]> getContext(List<Integer> sentence) {
+            Map<Integer, Integer> counts = new HashMap<>();
+            for (int index : sentence) {
+                if (counts.containsKey(index)) {
+                    counts.put(index, counts.get(index) + 1);
                 } else {
-                    entries.put(target, prev + diff);
+                    counts.put(index, 1);
                 }
             }
+            List<Integer[]> countList = counts.entrySet().stream()
+                    .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
+                    .collect(Collectors.toList());
+            List<Integer[]> output = new ArrayList<>();
+            int index = 0;
+            for (Integer[] current : countList) {
+                ListIterator<Integer[]> innerIter = countList.listIterator(index);
+                while (innerIter.hasNext()) {
+                    Integer[] tmp = innerIter.next();
+                    output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
+                }
+                index++;
+            }
+            return output;
         }
+
+        private List<Integer> strTokensToIndices(String[] strTokens) {
+            List<Integer> output = new ArrayList<>();
+            for (String token : strTokens) {
+                if (wordMap.containsKey(token)) {
+                    output.add(wordMap.get(token));
+                }
+            }
+            return output;
+        }
+
+
     }
 
 }

@@ -24,7 +24,8 @@ public class TestDependencyDMatrixGenerator {
         trueMatrix[0][0] = 17.0f;
         trueMatrix[1][1] = 12.0f;
         trueMatrix[0][1] = trueMatrix[1][0] = 14.0f;
-        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2);
+        DependencyDMatrixGenerator dmg
+                = new DependencyDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2, false);
         try {
             dmg.generateMatrices();
         } catch (IOException e) {
@@ -38,7 +39,7 @@ public class TestDependencyDMatrixGenerator {
         float[] context2 = new float[]{2, 2, 1};
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
-        dmg = new DependencyDMatrixGenerator(testData.getPath(), testTargets.getPath(), 0, 2);
+        dmg = new DependencyDMatrixGenerator(testData.getPath(), testTargets.getPath(), 0, 2, false);
         try {
             dmg.generateMatrices();
         } catch (IOException e) {

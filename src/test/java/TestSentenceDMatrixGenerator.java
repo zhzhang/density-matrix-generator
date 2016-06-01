@@ -9,7 +9,7 @@ import java.net.URL;
  * <p>
  * Created by zhuoranzhang on 4/29/16.
  */
-public class TestDistributionalDMatrixGenerator {
+public class TestSentenceDMatrixGenerator {
 
     @Test
     public void testMatrixGeneration() {
