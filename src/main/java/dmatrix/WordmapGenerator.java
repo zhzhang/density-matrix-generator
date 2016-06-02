@@ -86,6 +86,7 @@ public class WordmapGenerator {
         }
         List<Map.Entry<String, Integer>> sorted = counts.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
+        Collections.reverse(sorted);
         if (numContexts <= 0 ) {
             int total = sorted.stream().mapToInt(Map.Entry::getValue).sum();
             int sum = 0;
@@ -98,15 +99,16 @@ public class WordmapGenerator {
                 }
             }
             List<String> output = sorted.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-            Collections.reverse(output);
             return output;
         }
-        ListIterator<Map.Entry<String, Integer>> li = sorted.listIterator(sorted.size());
         List<String> output = new ArrayList<>(numContexts);
-        int index = 0;
-        while (index < this.numContexts && li.hasPrevious()) {
-            output.add(li.previous().getKey());
-            index++;
+        int count = 0;
+        for (Map.Entry<String, Integer> entry : sorted) {
+            output.add(entry.getKey());
+            count++;
+            if (count == numContexts) {
+                break;
+            }
         }
         return output;
     }
