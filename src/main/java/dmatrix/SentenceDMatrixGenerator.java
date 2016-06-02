@@ -47,6 +47,7 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         if (dim == 0) {
             softCutoff = true;
             cutoff = wordmapGenerator.getCutoff();
+            System.out.println(String.format("Cutoff is %d out of %d", cutoff, wordMap.size()));
         } else {
             softCutoff = false;
             cutoff = dim;
