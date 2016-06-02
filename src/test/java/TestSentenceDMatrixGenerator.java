@@ -18,20 +18,20 @@ public class TestSentenceDMatrixGenerator {
 
         // Test for case where alpha is not included in context.
         float[][] trueMatrix = new float[2][2];
-        trueMatrix[0][0] = 17.0f;
-        trueMatrix[1][1] = 12.0f;
-        trueMatrix[0][1] = trueMatrix[1][0] = 14.0f;
+        trueMatrix[0][0] = 34.0f;
+        trueMatrix[1][1] = 17.0f;
+        trueMatrix[0][1] = trueMatrix[1][0] = 24.0f;
         SentenceDMatrixGenerator dmg = new SentenceDMatrixGenerator(testData.getPath(), testTargets.getPath(), 2, 2, false);
         dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
 
         // Test for case where alpha is included in context.
-        float[] context1 = new float[]{3, 2, 0};
-        float[] context2 = new float[]{2, 2, 1};
+        float[] context1 = new float[]{4, 3, 0};
+        float[] context2 = new float[]{3, 2, 1};
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
-        dmg = new SentenceDMatrixGenerator(testData.getPath(), testTargets.getPath(), 3, 2, false);
+        dmg = new SentenceDMatrixGenerator(testData.getPath(), testTargets.getPath(), 0, 2, false);
         dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);

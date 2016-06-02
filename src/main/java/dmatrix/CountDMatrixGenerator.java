@@ -173,7 +173,12 @@ public abstract class CountDMatrixGenerator {
         // Write matrix parameters.
         try {
             PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
-            writer.println(String.format("%s %d", "dimension", wordMap.size()));
+            if (softCutoff) {
+                writer.println(String.format("%s %d", "dimension", wordMap.size()));
+                writer.println(String.format("%s %d", "cutoff", cutoff));
+            } else {
+                writer.println(String.format("%s %d", "dimension", cutoff));
+            }
             writer.flush();
             writer.close();
         } catch (FileNotFoundException e) {
@@ -230,7 +235,18 @@ public abstract class CountDMatrixGenerator {
                     new FileOutputStream(Paths.get(outputPath, "wordmap.txt").toString()), false);
             List<String> sorted = wordMap.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).collect(Collectors.toList());
-            sorted.forEach(writer::println);
+            if (softCutoff) {
+                sorted.forEach(writer::println);
+            } else {
+                int count = 0;
+                for (String word : sorted) {
+                    writer.println(word);
+                    count++;
+                    if (count == cutoff) {
+                        break;
+                    }
+                }
+            }
             writer.flush();
             writer.close();
         } catch (FileNotFoundException e) {

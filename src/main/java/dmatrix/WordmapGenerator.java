@@ -21,16 +21,21 @@ public class WordmapGenerator {
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
     private int numThreads;
     private int numContexts;
+    private int cutoff;
 
     public WordmapGenerator(String corpusRoot, TokenizedFileReaderFactory tokenizedFileReaderFactory, int numThreads, int numContexts) {
         this.corpusRoot = corpusRoot;
         this.tokenizedFileReaderFactory = tokenizedFileReaderFactory;
         this.numThreads = numThreads;
         this.numContexts = numContexts;
+        cutoff = 0;
     }
 
     public Map<String, Integer> generate() {
         List<String> topN = getMostFrequent();
+        if (numContexts == 0) {
+            numContexts = topN.size();
+        }
         Map<String, Integer> output = new HashMap<>(numContexts);
         int count = 0;
         for (String word : topN) {
@@ -38,6 +43,10 @@ public class WordmapGenerator {
             count++;
         }
         return output;
+    }
+
+    public int getCutoff() {
+        return cutoff;
     }
 
     public Map<String, float[]> generate(String vectorsPath) {
@@ -62,15 +71,6 @@ public class WordmapGenerator {
         return wordMap;
     }
 
-    public <T> Map<String, T> generate(Map<String, T> wordData) {
-        List<String> topN = getMostFrequent();
-        Map<String, T> output = new HashMap<>(numContexts);
-        for (String word : topN) {
-            output.put(word, wordData.get(word));
-        }
-        return output;
-    }
-
     private List<String> getMostFrequent() {
         Map<String, Integer> counts = new HashMap<>();
         ExecutorService pool = Executors.newFixedThreadPool(this.numThreads);
@@ -86,6 +86,21 @@ public class WordmapGenerator {
         }
         List<Map.Entry<String, Integer>> sorted = counts.entrySet().stream()
                 .sorted(Map.Entry.comparingByValue()).collect(Collectors.toList());
+        if (numContexts <= 0 ) {
+            int total = sorted.stream().mapToInt(Map.Entry::getValue).sum();
+            int sum = 0;
+            cutoff = 0;
+            for (Map.Entry<String, Integer> entry : sorted) {
+                sum += entry.getValue();
+                cutoff++;
+                if ((float) sum / total > 0.85) {
+                    break;
+                }
+            }
+            List<String> output = sorted.stream().map(Map.Entry::getKey).collect(Collectors.toList());
+            Collections.reverse(output);
+            return output;
+        }
         ListIterator<Map.Entry<String, Integer>> li = sorted.listIterator(sorted.size());
         List<String> output = new ArrayList<>(numContexts);
         int index = 0;

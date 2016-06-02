@@ -17,10 +17,10 @@ public class TestEmbeddingDMatrixGenerator {
         float[] gamma = new float[]{0.0f, -0.1f, 0.2f, 0.3f};
         // Test for case where alpha is not included in context.
         float[][] trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(
-                TestUtils.vectorSum(TestUtils.vectorScalarProduct(2.0f, beta),
+                TestUtils.vectorSum(TestUtils.vectorScalarProduct(4.0f, beta),
                         TestUtils.vectorScalarProduct(3.0f, gamma))),
                 TestUtils.matrixScalarProduct(2.0f,
-                        TestUtils.outerProduct(TestUtils.vectorSum(TestUtils.vectorScalarProduct(2.0f, beta),
+                        TestUtils.outerProduct(TestUtils.vectorSum(TestUtils.vectorScalarProduct(3.0f, beta),
                                 TestUtils.vectorScalarProduct(2.0f, gamma)))));
         EmbeddingDMatrixGenerator dmg = new EmbeddingDMatrixGenerator(testData.getPath(), testTargets.getPath(),
                 2, testVectors.getPath(), 1);
@@ -30,11 +30,11 @@ public class TestEmbeddingDMatrixGenerator {
         trueMatrix = TestUtils.matrixSum(
                 TestUtils.outerProduct(
                         TestUtils.vectorSum(
-                                TestUtils.vectorScalarProduct(2.0f, beta),
+                                TestUtils.vectorScalarProduct(4.0f, beta),
                                 TestUtils.vectorScalarProduct(3.0f, gamma))),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(
                         TestUtils.vectorSum(alpha, TestUtils.vectorSum(
-                                TestUtils.vectorScalarProduct(2.0f, beta),
+                                TestUtils.vectorScalarProduct(3.0f, beta),
                                 TestUtils.vectorScalarProduct(2.0f, gamma))))));
         dmg = new EmbeddingDMatrixGenerator(testData.getPath(), testTargets.getPath(),
                 3, testVectors.getPath(), 1);

@@ -7,7 +7,7 @@ import org.junit.Assert;
  */
 public class TestUtils {
 
-    public static final float TOLERANCE = 1e-7f;
+    public static final float TOLERANCE = 1e-6f;
 
     public static float[][] outerProduct(float[] vector) {
         float[][] output = new float[vector.length][vector.length];

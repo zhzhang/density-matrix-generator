@@ -44,7 +44,13 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         WordmapGenerator wordmapGenerator
                 = new WordmapGenerator(corpusRoot, tokenizedFileReaderFactory, numThreads, dim);
         wordMap = wordmapGenerator.generate();
-        cutoff = dim;
+        if (dim == 0) {
+            softCutoff = true;
+            cutoff = wordmapGenerator.getCutoff();
+        } else {
+            softCutoff = false;
+            cutoff = dim;
+        }
         System.out.println(
                 String.format("Wordmap generation took %d seconds",
                         (System.nanoTime() - startTime) / 1000000000));

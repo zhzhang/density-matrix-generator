@@ -2,8 +2,7 @@ USAGE="usage: corpus_path targets [-h] [-s n] -- generator density matrices
 
 where:
     -h  show this help text
-    -d  dimension of matrices (default: 2000)
-        soft cutoff mode when this parameter is set to -1
+    -d  dimension of matrices (default: soft cutoff, d = 0)
     -j  number of threads to use (default: 1)
     -o  output file (default: matrices/)
     -v  generate and output vector representation"
@@ -12,7 +11,7 @@ CORPUS_PATH="$1"
 TARGETS="$2"
 shift 2
 NUM_THREADS=1
-DIM=2000
+DIM=0
 OUTPUT="matrices"
 VECTORS=0
 
