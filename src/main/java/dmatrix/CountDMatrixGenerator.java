@@ -23,18 +23,19 @@ public abstract class CountDMatrixGenerator {
     String corpusRoot;
     int numThreads;
     int cutoff;
-    boolean getVectors;
+    private boolean getVectors;
     boolean softCutoff;
     Set<String> targets;
 
     Map<String, Integer> wordMap;
-    DataCell[][] densityMatrices;
+    private DataCell[][] densityMatrices;
     private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
-    DataCell[] vectors;
+    private DataCell[] vectors;
 
     CountDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
+        this.getVectors = getVectors;
         this.loadTargets(targetsPath);
         generateWordmap(dim);
         densityMatricesSparse = new HashMap<>();
@@ -89,12 +90,8 @@ public abstract class CountDMatrixGenerator {
                     Pair<Integer, Integer> coords = new ImmutablePair<>(x, y);
                     Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
                     synchronized (targetMatrix) {
-                        Float prev = targetMatrix.get(coords);
-                        if (prev == null) {
-                            targetMatrix.put(coords, (float) outer.getRight() * inner.getRight());
-                        } else {
-                            targetMatrix.put(coords, prev + (float) outer.getRight() * inner.getRight());
-                        }
+                        targetMatrix.put(coords,
+                                targetMatrix.getOrDefault(coords, 0.0f) + (float) outer.getRight() * inner.getRight());
                     }
                 }
             }
@@ -102,8 +99,16 @@ public abstract class CountDMatrixGenerator {
         }
     }
 
-    private void updateVector(String word, int x, float diff) {
-        vectors[x].updateEntry(word, diff);
+    void updateVector(String target, Map<String, Integer> context) {
+        // Only obtain vectors within cutoff.
+        if (getVectors) {
+            for (Map.Entry<String, Integer> entry : context.entrySet()) {
+                int index = wordMap.get(entry.getKey());
+                if (index < cutoff) {
+                    vectors[index].updateEntry(target, entry.getValue());
+                }
+            }
+        }
     }
 
     public float[][] getMatrix(String target) {
@@ -127,7 +132,7 @@ public abstract class CountDMatrixGenerator {
         }
         if (softCutoff) {
             Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
-            for (Map.Entry<Pair<Integer, Integer>, Float>  entry : targetMatrix.entrySet()) {
+            for (Map.Entry<Pair<Integer, Integer>, Float> entry : targetMatrix.entrySet()) {
                 int x = entry.getKey().getLeft();
                 int y = entry.getKey().getRight();
                 output[x][y] = entry.getValue();
@@ -233,7 +238,7 @@ public abstract class CountDMatrixGenerator {
         }
     }
 
-    class DataCell {
+    private class DataCell {
         Map<String, Float> entries;
 
         DataCell() {
@@ -250,12 +255,7 @@ public abstract class CountDMatrixGenerator {
 
         void updateEntry(String target, float diff) {
             synchronized (this) {
-                Float prev = entries.get(target);
-                if (prev == null) {
-                    entries.put(target, diff);
-                } else {
-                    entries.put(target, prev + diff);
-                }
+                entries.put(target, entries.getOrDefault(target, 0.0f) + diff);
             }
         }
     }

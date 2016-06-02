@@ -20,11 +20,16 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
         String targetsPath = args[1];
         int dim = Integer.parseInt(args[2]);
         int numThreads = Integer.parseInt(args[3]);
-        // TODO: tmp
-        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads, true);
+        boolean getVectors = (Integer.parseInt(args[4]) == 1);
+        DependencyDMatrixGenerator dmg
+                = new DependencyDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads, getVectors);
         dmg.generateMatrices();
-        dmg.writeMatrices(args[4]);
-        dmg.writeWordmap(args[4]);
+        String outputPath = args[5];
+        dmg.writeMatrices(outputPath);
+        if (getVectors) {
+            dmg.writeVectors(outputPath);
+        }
+        dmg.writeWordmap(outputPath);
     }
 
     public DependencyDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
@@ -106,6 +111,7 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
                 }
                 for (Map.Entry<Integer, Map<String, Integer>> entry : relationCounts.entrySet()) {
                     updateMatrix(sentence.getWord(entry.getKey()), entry.getValue());
+                    updateVector(sentence.getWord(entry.getKey()), entry.getValue());
                 }
             }
         }

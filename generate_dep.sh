@@ -5,7 +5,8 @@ where:
     -d  number of context words to use (default: 2000)
         soft cutoff mode when this parameter is set to -1
     -j  number of threads to use (default: 1)
-    -o  output file (default: matrices/)"
+    -o  output file (default: matrices/)
+    -v  generate and output vector representation"
 
 CORPUS_PATH="$1"
 TARGETS="$2"
@@ -13,6 +14,7 @@ shift 2
 NUM_THREADS=1
 DIM=2000
 OUTPUT="matrices"
+VECTORS=0
 
 while [[ $# > 0 ]]
 do
@@ -34,9 +36,13 @@ case $key in
     OUTPUT="$2"
     shift 2
     ;;
+    -v|--vectors)
+    VECTORS=1
+    shift
+    ;;
 esac
 done
 
 java -cp build/libs/density-matrix-generator.jar dmatrix.DependencyDMatrixGenerator\
-  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT
+  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $VECTORS $OUTPUT
 

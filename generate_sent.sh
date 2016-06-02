@@ -3,6 +3,7 @@ USAGE="usage: corpus_path targets [-h] [-s n] -- generator density matrices
 where:
     -h  show this help text
     -d  dimension of matrices (default: 2000)
+        soft cutoff mode when this parameter is set to -1
     -j  number of threads to use (default: 1)
     -o  output file (default: matrices/)
     -v  generate and output vector representation"
@@ -43,5 +44,5 @@ esac
 done
 
 java -cp build/libs/density-matrix-generator.jar dmatrix.SentenceDMatrixGenerator\
-  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $OUTPUT $VECTORS
+  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $VECTORS $OUTPUT
 
