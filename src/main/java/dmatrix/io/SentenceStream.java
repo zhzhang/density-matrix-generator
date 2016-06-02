@@ -21,8 +21,8 @@ public class SentenceStream {
     private int numSentences;
     private int numRead;
     private static Set<String> stopList = new HashSet<>(Arrays.asList(
-            new String[]{"det", "punct", "mark", "cc", "case", "cop", "root", "dep", "expl", "cop",
-            "aux", "case", "root", "auxpass", "discourse"}));
+            new String[]{"det", "case", "punct", "mark", "cc", "root", "dep", "expl", "cop",
+            "aux", "auxpass", "discourse", "vocative"}));
 
     public SentenceStream(String path, Set<String> targets) throws IOException {
         this.path = path;
