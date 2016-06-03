@@ -26,8 +26,10 @@ public abstract class DMatrixWriter {
             outputStream = new BufferedOutputStream(new FileOutputStream(outputFile, false));
         } catch (FileNotFoundException e) {
             System.out.println(String.format("Unable to open file for word: %s.", word));
+            e.printStackTrace();
         } catch (IOException e) {
             System.out.println(String.format("Unable to create file for word: %s.", word));
+            e.printStackTrace();
         }
     }
 
