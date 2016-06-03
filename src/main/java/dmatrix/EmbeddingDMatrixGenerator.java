@@ -154,6 +154,7 @@ public class EmbeddingDMatrixGenerator {
         try {
             PrintWriter writer = new PrintWriter(Paths.get(outputPath, "parameters.txt").toString());
             writer.println(String.format("%s %d", "dimension", dim));
+            writer.println("dense");
             writer.flush();
             writer.close();
         } catch (FileNotFoundException e) {
