@@ -37,9 +37,6 @@ public class SentenceStream {
             return null;
         }
         numRead++;
-        if (numRead % 500000 == 0) {
-            System.out.println(String.format("Processing sentence %d for file %s", numRead, path));
-        }
         try {
             unpacker.unpackArrayHeader(); // Unpack the sentence array header.
             int numWords = unpacker.unpackArrayHeader();
