@@ -32,11 +32,11 @@ public abstract class CountDMatrixGenerator {
     private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
     private DataCell[] vectors;
 
-    CountDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
+    CountDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
         this.getVectors = getVectors;
-        this.loadTargets(targetsPath);
+        this.targets = targets;
         generateWordmap(dim);
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
@@ -54,7 +54,6 @@ public abstract class CountDMatrixGenerator {
             for (int i = 0; i < cutoff; i++) {
                 vectors[i] = new DataCell();
             }
-
         }
     }
 
@@ -62,8 +61,8 @@ public abstract class CountDMatrixGenerator {
 
     public abstract void generateMatrices() throws IOException;
 
-    private void loadTargets(String targetsPath) {
-        targets = new HashSet<>();
+    static Set<String> loadTargets(String targetsPath) {
+        Set<String> targets = new HashSet<>();
         TextFileReader reader = new TextFileReader(targetsPath);
         String line;
         while ((line = reader.readLine()) != null) {
@@ -72,6 +71,19 @@ public abstract class CountDMatrixGenerator {
                 targets.add(s.toLowerCase());
             }
         }
+        return targets;
+    }
+
+    static List<Set<String>> partitionTargets(Set<String> targets, int numPartitions) {
+        List<String> targetsList = targets.stream().collect(Collectors.toList());
+        int partitionSize = (int) Math.ceil((float) targetsList.size() / numPartitions);
+        List<Set<String>> targetPartitions = new ArrayList<>(numPartitions);
+        for (int i = 0; i < targetsList.size(); i += partitionSize) {
+            targetPartitions.add(
+                    new HashSet<>(targetsList.subList(i, Math.min(i + partitionSize, targetsList.size()))));
+        }
+        return targetPartitions;
+
     }
 
     void updateMatrix(String target, Map<String, Integer> context) {

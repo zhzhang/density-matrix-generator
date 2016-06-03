@@ -22,19 +22,24 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         int dim = Integer.parseInt(args[2]);
         int numThreads = Integer.parseInt(args[3]);
         boolean getVectors = (Integer.parseInt(args[4]) == 1);
-        SentenceDMatrixGenerator dmg
-                = new SentenceDMatrixGenerator(corpusRoot, targetsPath, dim, numThreads, getVectors);
-        dmg.generateMatrices();
         String outputPath = args[5];
-        dmg.writeMatrices(outputPath);
-        if (getVectors) {
-            dmg.writeVectors(outputPath);
+        int numRuns = Integer.parseInt(args[6]);
+        Set<String> targets = loadTargets(targetsPath);
+        List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
+        for (Set<String> targetPartition : targetPartitions) {
+            SentenceDMatrixGenerator dmg
+                    = new SentenceDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors);
+            dmg.generateMatrices();
+            dmg.writeMatrices(outputPath);
+            if (getVectors) {
+                dmg.writeVectors(outputPath);
+            }
+            dmg.writeWordmap(outputPath);
         }
-        dmg.writeWordmap(outputPath);
     }
 
-    public SentenceDMatrixGenerator(String corpusRoot, String targetsPath, int dim, int numThreads, boolean getVectors) {
-        super(corpusRoot, targetsPath, dim, numThreads, getVectors);
+    public SentenceDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
+        super(corpusRoot, targets, dim, numThreads, getVectors);
     }
 
     void generateWordmap(int dim) {
