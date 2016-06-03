@@ -22,7 +22,7 @@ public class SentenceStream {
     private int numRead;
     private static Set<String> stopList = new HashSet<>(Arrays.asList(
             new String[]{"det", "case", "punct", "mark", "cc", "root", "dep", "expl", "cop",
-            "aux", "auxpass", "discourse", "vocative"}));
+                    "aux", "auxpass", "discourse", "vocative"}));
 
     public SentenceStream(String path, Set<String> targets) throws IOException {
         this.path = path;
@@ -73,6 +73,14 @@ public class SentenceStream {
             return new Sentence(wordMap, dependencies);
         } catch (IOException e) {
             return null;
+        }
+    }
+
+    public void close() {
+        try {
+            unpacker.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

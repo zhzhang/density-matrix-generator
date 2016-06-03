@@ -114,6 +114,7 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
                     updateVector(sentence.getWord(entry.getKey()), entry.getValue());
                 }
             }
+            sentenceStream.close();
         }
     }
 

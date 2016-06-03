@@ -97,6 +97,7 @@ public class DependencyWordmapGenerator {
                         }
                     }
                 }
+                sentenceStream.close();
                 this.updateCounts(counts);
             }
         }
