@@ -82,7 +82,9 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
     }
 
     private void updateVector(String word, int x, float diff) {
-        vectors[x].updateEntry(word, diff);
+        if (x < cutoff) {
+            vectors[x].updateEntry(word, diff);
+        }
     }
 
     public void generateMatrices() {
