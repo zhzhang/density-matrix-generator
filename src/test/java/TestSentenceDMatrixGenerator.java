@@ -1,7 +1,12 @@
 import dmatrix.SentenceDMatrixGenerator;
+import dmatrix.io.IOUtils;
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -40,17 +45,11 @@ public class TestSentenceDMatrixGenerator {
         Assert.assertArrayEquals(matrix, trueMatrix);
 
         // Test writing to file.
-        /*String outputDir = String.format("tmp_test_matrices_%d", System.nanoTime() / 1000000000);
+        String outputDir = String.format("tmp_test_matrices_%d", System.nanoTime() / 1000000000);
         dmg.writeMatrices(outputDir);
         matrix = new float[0][0];
         try {
-            DMatrixSparse matrixProto = DMatrixSparse.parseFrom(new FileInputStream(outputDir + "/alpha.dat"));
-            matrix = new float[matrixProto.getDimension()][matrixProto.getDimension()];
-            for (DMatrixSparse.DMatrixEntry entry : matrixProto.getEntriesList()) {
-                int x = entry.getX();
-                int y = entry.getY();
-                matrix[x][y] = matrix[y][x] = entry.getValue();
-            }
+            matrix = IOUtils.loadSparseMatrix(outputDir + "/alpha.bin", 3);
         } catch (FileNotFoundException e) {
             Assert.fail("FileNotFoundException was thrown.");
         } catch (IOException e) {
@@ -58,8 +57,11 @@ public class TestSentenceDMatrixGenerator {
         }
         Assert.assertArrayEquals(matrix, trueMatrix);
         // Cleanup
-        (new File(outputDir + "/alpha.dat")).delete();
-        (new File(outputDir)).delete();*/
+        try {
+            FileUtils.deleteDirectory(new File(outputDir));
+        } catch (IOException e) {
+            Assert.fail("Failed to delete test output directory.");
+        }
     }
 
 

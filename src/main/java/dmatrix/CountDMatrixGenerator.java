@@ -58,14 +58,17 @@ public abstract class CountDMatrixGenerator {
 
     public abstract void generateMatrices() throws IOException;
 
-    static Set<String> loadTargets(String targetsPath) {
+    static Set<String> loadTargets(String targetsPath, String outputPath) {
         Set<String> targets = new HashSet<>();
         TextFileReader reader = new TextFileReader(targetsPath);
         String line;
         while ((line = reader.readLine()) != null) {
             String[] tmp = line.split("\\s+");
             for (String s : tmp) {
-                targets.add(s.toLowerCase());
+                File matrixFile = new File(Paths.get(outputPath, s + ".bin").toString());
+                if (!matrixFile.exists()) {
+                    targets.add(s.toLowerCase());
+                }
             }
         }
         return targets;

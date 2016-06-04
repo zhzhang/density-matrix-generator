@@ -26,7 +26,7 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         boolean getVectors = (Integer.parseInt(args[4]) == 1);
         String outputPath = args[5];
         int numRuns = Integer.parseInt(args[6]);
-        Set<String> targets = loadTargets(targetsPath);
+        Set<String> targets = loadTargets(targetsPath, outputPath);
         List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
         File f = new File(Paths.get(outputPath, "vectors.txt").toString());
         if (f.exists() && !f.delete()) {
