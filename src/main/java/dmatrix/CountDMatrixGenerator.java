@@ -23,14 +23,14 @@ public abstract class CountDMatrixGenerator {
     String corpusRoot;
     int numThreads;
     int cutoff;
-    private boolean getVectors;
+    boolean getVectors;
     boolean softCutoff;
     Set<String> targets;
 
     Map<String, Integer> wordMap;
-    private DataCell[][] densityMatrices;
-    private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
-    private DataCell[] vectors;
+    DataCell[][] densityMatrices;
+    Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
+    DataCell[] vectors;
 
     CountDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
         this.corpusRoot = corpusRoot;
@@ -266,7 +266,7 @@ public abstract class CountDMatrixGenerator {
         }
     }
 
-    private class DataCell {
+    class DataCell {
         Map<String, Float> entries;
 
         DataCell() {

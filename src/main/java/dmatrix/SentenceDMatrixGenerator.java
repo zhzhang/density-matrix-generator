@@ -1,6 +1,8 @@
 package dmatrix;
 
 import dmatrix.io.*;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.lang.Runnable;
 import java.lang.InterruptedException;
@@ -8,6 +10,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Density matrix generator using sparse updates.
@@ -62,6 +65,26 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
                         (System.nanoTime() - startTime) / 1000000000));
     }
 
+    private void updateMatrix(String target, int x, int y, float diff) {
+        if (x < cutoff && y < cutoff) {
+            int min = Math.min(x, y);
+            int max = Math.max(x, y);
+            this.densityMatrices[min][max - min].updateEntry(target, diff);
+        } else if (softCutoff) {
+            Pair<Integer, Integer> coords = new ImmutablePair<>(x, y);
+            Map<Pair<Integer, Integer>, Float> targetMatrix = densityMatricesSparse.get(target);
+            synchronized (targetMatrix) {
+                targetMatrix.put(coords,
+                        targetMatrix.getOrDefault(coords, 0.0f) + diff);
+            }
+
+        }
+    }
+
+    private void updateVector(String word, int x, float diff) {
+        vectors[x].updateEntry(word, diff);
+    }
+
     public void generateMatrices() {
         // Generate matrices.
         System.out.println("Generating matrices...");
@@ -104,27 +127,68 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
             TokenizedFileReader reader = tokenizedFileReaderFactory.getReader(path);
             String[] strTokens;
             while ((strTokens = reader.readLineTokens()) != null) {
-                Map<String, Integer> context = new HashMap<>();
-                for (String token : strTokens) {
-                    if (wordMap.containsKey(token)) {
-                        context.put(token, context.getOrDefault(token, 0) + 1);
-                    }
+                List<Integer> tokens = strTokensToIndices(strTokens);
+                if (tokens.size() == 0) {
+                    continue;
                 }
-                for (String token : strTokens) {
-                    if (targets.contains(token)) {
-                        if (wordMap.containsKey(token) && context.containsKey(token)) {
-                            context.put(token, context.get(token) - 1);
-                            updateMatrix(token, context);
-                            updateVector(token, context);
-                            context.put(token, context.get(token) + 1);
+                List<Integer[]> context = getContext(tokens);
+                //TODO: The order of data structure usage is probably not optimal here.
+                for (String target : strTokens) {
+                    if (targets.contains(target)) {
+                        if (wordMap.containsKey(target)) {
+                            int targetIndex = wordMap.get(target);
+                            for (Integer[] data : context) {
+                                int xCount = data[0].equals(targetIndex) ? (data[1] - 1) : data[1];
+                                int yCount = data[2].equals(targetIndex) ? (data[3] - 1) : data[3];
+                                updateMatrix(target, data[0], data[2], xCount * yCount);
+                                if (getVectors && data[0].equals(data[2])) {
+                                    updateVector(target, data[0], xCount);
+                                }
+                            }
                         } else {
-                            updateMatrix(token, context);
-                            updateVector(token, context);
+                            for (Integer[] data : context) {
+                                updateMatrix(target, data[0], data[2], data[1] * data[3]);
+                            }
                         }
                     }
                 }
             }
             reader.close();
+        }
+
+        private List<Integer[]> getContext(List<Integer> sentence) {
+            Map<Integer, Integer> counts = new HashMap<>();
+            for (int index : sentence) {
+                if (counts.containsKey(index)) {
+                    counts.put(index, counts.get(index) + 1);
+                } else {
+                    counts.put(index, 1);
+                }
+            }
+            List<Integer[]> countList = counts.entrySet().stream()
+                    .map(entry -> new Integer[]{entry.getKey(), entry.getValue()})
+                    .collect(Collectors.toList());
+            List<Integer[]> output = new ArrayList<>();
+            int index = 0;
+            for (Integer[] current : countList) {
+                ListIterator<Integer[]> innerIter = countList.listIterator(index);
+                while (innerIter.hasNext()) {
+                    Integer[] tmp = innerIter.next();
+                    output.add(new Integer[]{current[0], current[1], tmp[0], tmp[1]});
+                }
+                index++;
+            }
+            return output;
+        }
+
+        private List<Integer> strTokensToIndices(String[] strTokens) {
+            List<Integer> output = new ArrayList<>();
+            for (String token : strTokens) {
+                if (wordMap.containsKey(token)) {
+                    output.add(wordMap.get(token));
+                }
+            }
+            return output;
         }
 
     }
