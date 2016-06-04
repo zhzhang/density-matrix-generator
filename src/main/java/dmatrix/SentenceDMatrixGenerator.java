@@ -84,14 +84,20 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
     private class DMatrixFileWorker implements Runnable {
         private List<String> filePaths;
         private TokenizedFileReaderFactory tokenizedFileReaderFactory;
+        private int numProcessed;
 
         DMatrixFileWorker(List<String> paths) {
             this.filePaths = paths;
             tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
+            numProcessed = 0;
         }
 
         public void run() {
-            filePaths.forEach(this::processFile);
+            for (String filePath : filePaths) {
+                numProcessed++;
+                System.out.println(String.format("Processing %d out of $d...", numProcessed, filePath.length()));
+                processFile(filePath);
+            }
         }
 
         void processFile(String path) {
