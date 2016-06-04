@@ -3,6 +3,7 @@ package dmatrix;
 import dmatrix.io.*;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,14 +22,18 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
         int dim = Integer.parseInt(args[2]);
         int numThreads = Integer.parseInt(args[3]);
         boolean getVectors = (Integer.parseInt(args[4]) == 1);
+        String outputPath = args[5];
         int numRuns = Integer.parseInt(args[6]);
         Set<String> targets = loadTargets(targetsPath);
         List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
+        File f = new File(Paths.get(outputPath, "vectors.txt").toString());
+        if (f.exists() && !f.delete()) {
+            System.out.println("Deleting previous vectors failed.");
+        }
         for (Set<String> targetPartition : targetPartitions) {
             DependencyDMatrixGenerator dmg
                     = new DependencyDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors);
             dmg.generateMatrices();
-            String outputPath = args[5];
             dmg.writeMatrices(outputPath);
             if (getVectors) {
                 dmg.writeVectors(outputPath);

@@ -4,10 +4,7 @@ import dmatrix.io.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -220,8 +217,8 @@ public abstract class CountDMatrixGenerator {
             }
         }
         try {
-            PrintWriter writer = new PrintWriter(
-                    new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), true);
+            BufferedWriter writer = new BufferedWriter(
+                    new FileWriter(Paths.get(outputPath, "vectors.txt").toString(), true));
             for (Map.Entry<String, Float[]> entry : output.entrySet()) {
                 StringBuilder stringBuilder = new StringBuilder();
                 for (Float value : entry.getValue()) {
@@ -232,12 +229,16 @@ public abstract class CountDMatrixGenerator {
                         stringBuilder.append(value);
                     }
                 }
-                writer.println(String.format("%s%s", entry.getKey(), stringBuilder.toString()));
+                writer.write(String.format("%s%s", entry.getKey(), stringBuilder.toString()));
+                writer.newLine();
             }
             writer.flush();
             writer.close();
         } catch (FileNotFoundException e) {
             System.out.println(String.format("File %s could not be created", outputPath));
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

@@ -2,8 +2,10 @@ package dmatrix;
 
 import dmatrix.io.*;
 
+import java.io.File;
 import java.lang.Runnable;
 import java.lang.InterruptedException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +28,10 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         int numRuns = Integer.parseInt(args[6]);
         Set<String> targets = loadTargets(targetsPath);
         List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
+        File f = new File(Paths.get(outputPath, "vectors.txt").toString());
+        if (f.exists() && !f.delete()) {
+           System.out.println("Deleting previous vectors failed.");
+        }
         for (Set<String> targetPartition : targetPartitions) {
             SentenceDMatrixGenerator dmg
                     = new SentenceDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors);
@@ -95,7 +101,7 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         public void run() {
             for (String filePath : filePaths) {
                 numProcessed++;
-                System.out.println(String.format("Processing %d out of $d...", numProcessed, filePath.length()));
+                System.out.println(String.format("Processing %d out of %d...", numProcessed, filePaths.size()));
                 processFile(filePath);
             }
         }
