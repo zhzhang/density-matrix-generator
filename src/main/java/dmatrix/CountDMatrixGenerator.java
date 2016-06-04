@@ -221,7 +221,7 @@ public abstract class CountDMatrixGenerator {
         }
         try {
             PrintWriter writer = new PrintWriter(
-                    new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), false);
+                    new FileOutputStream(Paths.get(outputPath, "vectors.txt").toString()), true);
             for (Map.Entry<String, Float[]> entry : output.entrySet()) {
                 StringBuilder stringBuilder = new StringBuilder();
                 for (Float value : entry.getValue()) {
