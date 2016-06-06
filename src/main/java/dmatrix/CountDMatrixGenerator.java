@@ -206,9 +206,6 @@ public abstract class CountDMatrixGenerator {
             return;
         }
         Map<String, Float[]> output = new HashMap<>();
-        for (String target : targets) {
-            output.put(target, new Float[cutoff]);
-        }
         for (int i = 0; i < cutoff; i++) {
             for (Map.Entry<String, Float> entry : vectors[i].getAllEntries()) {
                 Float[] vector = output.get(entry.getKey());
