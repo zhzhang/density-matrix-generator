@@ -5,11 +5,11 @@ import org.junit.Assert;
  * <p>
  * Created by zhuoranzhang on 5/1/16.
  */
-public class TestUtils {
+class TestUtils {
 
-    public static final float TOLERANCE = 1e-6f;
+    private static final float TOLERANCE = 1e-6f;
 
-    public static float[][] outerProduct(float[] vector) {
+    static float[][] outerProduct(float[] vector) {
         float[][] output = new float[vector.length][vector.length];
         for (int i = 0; i < vector.length; i++) {
             for (int j = i; j < vector.length; j++) {
@@ -19,7 +19,20 @@ public class TestUtils {
         return output;
     }
 
-    public static float[][] matrixSum(float[][] X, float[][] Y) {
+    static float[] normalize(float[] vector) {
+        double norm = 0.0f;
+        for (float value : vector) {
+            norm += value * value;
+        }
+        norm = Math.sqrt(norm);
+        float[] output = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            output[i] = vector[i] / (float) norm;
+        }
+        return output;
+    }
+
+    static float[][] matrixSum(float[][] X, float[][] Y) {
         float[][] output = new float[X.length][X.length];
         for (int i = 0; i < X.length; i++) {
             for (int j = i; j < X.length; j++) {
@@ -29,7 +42,7 @@ public class TestUtils {
         return output;
     }
 
-    public static float[][] matrixScalarProduct(float scalar, float[][] matrix) {
+    static float[][] matrixScalarProduct(float scalar, float[][] matrix) {
         float[][] output = new float[matrix.length][matrix.length];
         for (int i = 0; i < matrix.length; i++) {
             for (int j = i; j < matrix.length; j++) {
@@ -39,7 +52,7 @@ public class TestUtils {
         return output;
     }
 
-    public static float[] vectorSum(float[] x, float[] y)  {
+    static float[] vectorSum(float[] x, float[] y)  {
         float[] output = new float[x.length];
         for (int i = 0; i < x.length; i++) {
             output[i] = x[i] + y[i];
@@ -47,7 +60,7 @@ public class TestUtils {
         return output;
     }
 
-    public static float[] vectorScalarProduct(float scalar, float[] x)  {
+    static float[] vectorScalarProduct(float scalar, float[] x)  {
         float[] output = new float[x.length];
         for (int i = 0; i < x.length; i++) {
             output[i] = scalar * x[i];
@@ -55,7 +68,7 @@ public class TestUtils {
         return output;
     }
 
-    public static void assert2DFloatArrayEquals(float[][] X, float[][] Y) {
+    static void assert2DFloatArrayEquals(float[][] X, float[][] Y) {
         for (int i = 0; i < X.length; i++) {
             Assert.assertArrayEquals(X[i], Y[i], TOLERANCE);
         }

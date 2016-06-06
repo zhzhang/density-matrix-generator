@@ -16,6 +16,7 @@ public class EmbeddingDMatrixGenerator {
     private String corpusRoot;
     private int numThreads;
     private int dim;
+    private boolean contextNorm;
     private Set<String> targets;
     private TokenizedFileReaderFactory tokenizedFileReaderFactory;
 
@@ -28,17 +29,19 @@ public class EmbeddingDMatrixGenerator {
         int numContexts = Integer.parseInt(args[2]);
         String vectorsPath = args[3];
         int numThreads = Integer.parseInt(args[4]);
-        String outputPath = args[5];
+        boolean contextNorm = Integer.parseInt(args[4]) == 1;
+        String outputPath = args[6];
         EmbeddingDMatrixGenerator dmg = new EmbeddingDMatrixGenerator(corpusRoot, targetsPath, numContexts,
-                vectorsPath, numThreads);
+                vectorsPath, numThreads, contextNorm);
         dmg.generateMatrices();
         dmg.writeMatrices(outputPath);
     }
 
     public EmbeddingDMatrixGenerator(String corpusRoot, String targetsPath, int numContexts,
-                                     String vectorsPath, int numThreads) {
+                                     String vectorsPath, int numThreads, boolean contextNorm) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
+        this.contextNorm = contextNorm;
         this.tokenizedFileReaderFactory = new TokenizedFileReaderFactory();
         this.loadTargets(targetsPath);
         WordmapGenerator wordmapGenerator
@@ -103,6 +106,14 @@ public class EmbeddingDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
+    private float getSquareNorm(float[] vector) {
+        float output = 0.0f;
+        for (float value : vector) {
+            output += value * value;
+        }
+        return output;
+    }
+
     private void updateMatrix(String target, float[] baseContext) {
         float[] context = Arrays.copyOf(baseContext, baseContext.length);
         float[] targetVector = wordMap.get(target);
@@ -111,11 +122,23 @@ public class EmbeddingDMatrixGenerator {
                 context[i] -= targetVector[i];
             }
         }
+        float squareNorm = getSquareNorm(context);
+        if (squareNorm  == 0.0f) {
+            return;
+        }
         float[][] prev = densityMatrices.get(target);
         synchronized (prev) {
-            for (int i = 0; i < this.dim; i++) {
-                for (int j = 0; j < this.dim - i; j++) {
-                    prev[i][j] += context[i] * context[i + j];
+            if (contextNorm) {
+                for (int i = 0; i < this.dim; i++) {
+                    for (int j = 0; j < this.dim - i; j++) {
+                        prev[i][j] += context[i] * context[i + j] / squareNorm;
+                    }
+                }
+            } else {
+                for (int i = 0; i < this.dim; i++) {
+                    for (int j = 0; j < this.dim - i; j++) {
+                        prev[i][j] += context[i] * context[i + j];
+                    }
                 }
             }
         }
