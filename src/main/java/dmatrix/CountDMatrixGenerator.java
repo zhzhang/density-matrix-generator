@@ -154,6 +154,14 @@ public abstract class CountDMatrixGenerator {
         return output;
     }
 
+    public float[] getVector(String target) {
+        float[] output = new float[cutoff];
+        for (int i = 0; i < cutoff; i++) {
+            output[i] = vectors[i].getValue(target);
+        }
+        return output;
+    }
+
     public void writeMatrices(String outputPath) {
         long startTime = System.nanoTime();
         Map<String, SparseDMatrixWriter> outputWriters = new HashMap<>();

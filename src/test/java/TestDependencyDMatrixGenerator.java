@@ -75,5 +75,21 @@ public class TestDependencyDMatrixGenerator {
         }
     }
 
+    @Test
+    public void testVectorGeneration() {
+        URL testData = this.getClass().getResource("/test-data-parsed");
+        Set<String> targets = new HashSet<>(Arrays.asList(new String[]{"alpha"}));
+        DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(testData.getPath(), targets, 3, 2, true);
+        try {
+            dmg.generateMatrices();
+        } catch (IOException e) {
+            fail("IOException thrown");
+        }
+        float[] vector = dmg.getVector("alpha");
+        float[] trueVector;
+        trueVector = new float[]{7.0f, 6.0f, 2.0f};
+        Assert.assertArrayEquals(vector, trueVector, 0.0f);
+    }
+
 
 }

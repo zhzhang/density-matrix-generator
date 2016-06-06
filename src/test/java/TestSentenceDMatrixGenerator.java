@@ -1,5 +1,6 @@
 import dmatrix.SentenceDMatrixGenerator;
 import dmatrix.io.IOUtils;
+import dmatrix.io.Sentence;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -11,6 +12,8 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import static junit.framework.TestCase.fail;
 
 /**
  * Test matrix generation.
@@ -64,5 +67,16 @@ public class TestSentenceDMatrixGenerator {
         }
     }
 
+    @Test
+    public void testVectorGeneration() {
+        URL testData = this.getClass().getResource("/test-data");
+        Set<String> targets = new HashSet<>(Arrays.asList(new String[]{"alpha"}));
+        SentenceDMatrixGenerator dmg = new SentenceDMatrixGenerator(testData.getPath(), targets, 3, 2, true);
+        dmg.generateMatrices();
+        float[] vector = dmg.getVector("alpha");
+        float[] trueVector;
+        trueVector = new float[]{10.0f, 7.0f, 2.0f};
+        Assert.assertArrayEquals(vector, trueVector, 0.0f);
+    }
 
 }
