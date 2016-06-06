@@ -50,7 +50,8 @@ public class WordmapGenerator {
     }
 
     public Map<String, float[]> generate(String vectorsPath) {
-        Set<String> topN = new HashSet<>(getMostFrequent());
+        List<String> topNList = getMostFrequent();
+        Set<String> topN = new HashSet<>(topNList);
         TextFileReader reader = new TextFileReader(vectorsPath);
         Map<String, float[]> wordMap = new HashMap<>();
         String line;
@@ -65,8 +66,22 @@ public class WordmapGenerator {
             }
         }
         if (wordMap.size() < numContexts) {
+            int index = 0;
+            List<Integer> missingIndex = new LinkedList<>();
+            List<String> missingWords = new LinkedList<>();
+            for (String word : topNList) {
+                if (!wordMap.containsKey(word)) {
+                    missingIndex.add(index);
+                    missingWords.add(word);
+                }
+                index++;
+            }
             System.out.println(String.format(
-                    "WARNING: vectors exist for only %d out of %d context words", wordMap.size(), numContexts));
+                    "WARNING: vectors exist for only %d out of %d context words, missing words are"
+                    , wordMap.size(), numContexts));
+            System.out.println(missingWords);
+            System.out.println("at indices");
+            System.out.println(missingIndex);
         }
         return wordMap;
     }

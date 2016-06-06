@@ -23,7 +23,7 @@ case $key in
     exit
     ;;
     -n|--num_vectors)
-    DIM="$2"
+    N="$2"
     shift
     ;;
     -j|--jobs)
