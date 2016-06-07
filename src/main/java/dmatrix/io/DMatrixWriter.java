@@ -24,8 +24,6 @@ public abstract class DMatrixWriter {
                 outputFile.createNewFile();
             }
             outputStream = new BufferedOutputStream(new FileOutputStream(outputFile, false));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
