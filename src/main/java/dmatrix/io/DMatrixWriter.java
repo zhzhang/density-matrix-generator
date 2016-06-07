@@ -2,6 +2,7 @@ package dmatrix.io;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 
 /**
@@ -19,7 +20,7 @@ public abstract class DMatrixWriter {
             File outputFile = new File(Paths.get(matricesPath, word + ".bin").toString());
             if (!outputFile.exists()) {
                 if (!outputFile.getParentFile().exists()) {
-                    outputFile.getParentFile().mkdirs();
+                    Files.createDirectories(outputFile.getParentFile().toPath());
                 }
                 outputFile.createNewFile();
             }
