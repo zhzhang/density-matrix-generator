@@ -183,6 +183,10 @@ public abstract class CountDMatrixGenerator {
                 continue;
             }
             SparseDMatrixWriter writer = outputWriters.get(target);
+            if (writer == null) {
+                writer = new SparseDMatrixWriter(target, outputPath);
+                outputWriters.put(target, writer);
+            }
             for (Map.Entry<Pair<Integer, Integer>, Float> entry : matrix.entrySet()) {
                 Pair<Integer, Integer> coord = entry.getKey();
                 writer.writeEntry(coord.getLeft(), coord.getRight(), entry.getValue());
@@ -203,6 +207,7 @@ public abstract class CountDMatrixGenerator {
             writer.close();
         } catch (FileNotFoundException e) {
             System.out.println(String.format("File %s could not be created", outputPath));
+            e.printStackTrace();
         }
         System.out.println(String.format("Matrix write took %d seconds",
                 (System.nanoTime() - startTime) / 1000000000));
@@ -272,6 +277,7 @@ public abstract class CountDMatrixGenerator {
             writer.close();
         } catch (FileNotFoundException e) {
             System.out.println("Unable to write wordmap.");
+            e.printStackTrace();
         }
     }
 

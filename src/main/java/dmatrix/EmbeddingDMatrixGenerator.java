@@ -29,7 +29,7 @@ public class EmbeddingDMatrixGenerator {
         int numContexts = Integer.parseInt(args[2]);
         String vectorsPath = args[3];
         int numThreads = Integer.parseInt(args[4]);
-        boolean contextNorm = Integer.parseInt(args[4]) == 1;
+        boolean contextNorm = Integer.parseInt(args[5]) == 1;
         String outputPath = args[6];
         EmbeddingDMatrixGenerator dmg = new EmbeddingDMatrixGenerator(corpusRoot, targetsPath, numContexts,
                 vectorsPath, numThreads, contextNorm);
