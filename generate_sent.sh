@@ -1,4 +1,4 @@
-USAGE="usage: corpus_path targets [-h] [-s n] -- generator density matrices
+USAGE="usage: corpus_path targets [-h] [-s n] -- generate density matrices
 
 where:
     -h  show this help text
