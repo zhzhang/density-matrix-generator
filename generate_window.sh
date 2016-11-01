@@ -17,6 +17,7 @@ DIM=0
 OUTPUT="matrices"
 VECTORS=0
 RUNS=1
+WINDOW=2
 MEM=""
 
 while [[ $# > 0 ]]
@@ -51,9 +52,13 @@ case $key in
     MEM="-Xmx$2"
     shift 2
     ;;
+    -w|--window)
+    WINDOW="$2"
+    shift 2
+    ;;
 esac
 done
 
-java $MEM -cp build/libs/density-matrix-generator.jar dmatrix.SentenceDMatrixGenerator\
-  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $VECTORS $OUTPUT $RUNS
+java $MEM -cp build/libs/density-matrix-generator.jar dmatrix.WindowDMatrixGenerator\
+  $CORPUS_PATH $TARGETS $DIM $NUM_THREADS $VECTORS $OUTPUT $RUNS $WINDOW
 

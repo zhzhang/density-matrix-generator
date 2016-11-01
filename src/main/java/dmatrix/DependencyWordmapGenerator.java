@@ -37,7 +37,7 @@ public class DependencyWordmapGenerator {
         try {
             pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
-            //TODO: see if graceful exit is possible here
+            System.out.println(e);
         }
         Map<String, Integer> output = new HashMap<>(counts.size());
         ListIterator<Map.Entry<String, Integer>> li = counts.entrySet().stream()

@@ -32,8 +32,8 @@ public class Sentence {
         return words.get(index);
     }
 
-    public Set<String> getWords() {
-        return words.values().stream().collect(Collectors.toSet());
+    public List<String> getWords() {
+        return words.values().stream().collect(Collectors.toList());
     }
 
 }

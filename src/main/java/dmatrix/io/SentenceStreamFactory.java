@@ -18,7 +18,7 @@ public class SentenceStreamFactory {
         try {
             return new SentenceStream(path, targets);
         } catch (IOException e) {
-            System.out.println("Unable to open sentence stream.");
+            System.out.println(String.format("Unable to open sentence stream for file %s, %s.", path, e.getMessage()));
         }
         return null;
     }

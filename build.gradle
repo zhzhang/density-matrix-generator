@@ -1,5 +1,4 @@
 plugins {
-    id "com.google.protobuf" version "0.7.6"
     id "java"
 }
 
@@ -17,12 +16,6 @@ dependencies {
 jar {
     from {
         configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-}
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:2.6.1'
     }
 }
 
