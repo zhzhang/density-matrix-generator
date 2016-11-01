@@ -19,22 +19,62 @@ public abstract class CountDMatrixGenerator {
     // Runtime parameters.
     String corpusRoot;
     int numThreads;
+    private int numRuns;
     int cutoff;
     private boolean getVectors;
     boolean softCutoff;
-    Set<String> targets;
+    Set<String> allTargets;
 
+    private List<Set<String>> targetPartitions;
+    Set<String> targets;
     Map<String, Integer> wordMap;
     private DataCell[][] densityMatrices;
     private Map<String, Map<Pair<Integer, Integer>, Float>> densityMatricesSparse;
     private DataCell[] vectors;
 
-    CountDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
+    CountDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
+                          int numRuns, boolean getVectors) {
         this.corpusRoot = corpusRoot;
         this.numThreads = numThreads;
+        this.numRuns = numRuns;
         this.getVectors = getVectors;
-        this.targets = targets;
+        this.allTargets = targets;
         generateWordmap(dim);
+        targetPartitions = partitionTargets(targets, numRuns);
+    }
+
+    abstract void generateWordmap(int dim);
+
+    abstract void generateMatricesRun();
+
+    public void generateMatrices() {
+        if (numRuns == 1) {
+            setupMatrixGenerator(targetPartitions.get(0));
+            this.generateMatricesRun();
+        } else {
+            System.out.println(
+                    "Running generate matrices on multiple target partitions, only last partitions will be stored.");
+        }
+    }
+
+    public void generateAndWriteMatrices(String outputPath) {
+        File f = new File(Paths.get(outputPath, "vectors.txt").toString());
+        if (getVectors && f.exists() && !f.delete()) {
+            System.out.println("Deleting previous vectors failed.");
+        }
+        for (Set<String> targetPartition : targetPartitions) {
+            setupMatrixGenerator(targetPartition);
+            this.generateMatricesRun();
+            this.writeMatrices(outputPath);
+            if (getVectors) {
+                this.writeVectors(outputPath);
+            }
+            this.writeWordmap(outputPath);
+        }
+    }
+
+    private void setupMatrixGenerator(Set<String> targets) {
+        this.targets = targets;
         densityMatricesSparse = new HashMap<>();
         for (String target : targets) {
             densityMatricesSparse.put(target, new HashMap<>());
@@ -54,10 +94,6 @@ public abstract class CountDMatrixGenerator {
         }
     }
 
-    abstract void generateWordmap(int dim);
-
-    public abstract void generateMatrices() throws IOException;
-
     static Set<String> loadTargets(String targetsPath, String outputPath) {
         Set<String> targets = new HashSet<>();
         TextFileReader reader = new TextFileReader(targetsPath);
@@ -74,7 +110,7 @@ public abstract class CountDMatrixGenerator {
         return targets;
     }
 
-    static List<Set<String>> partitionTargets(Set<String> targets, int numPartitions) {
+    private static List<Set<String>> partitionTargets(Set<String> targets, int numPartitions) {
         List<String> targetsList = targets.stream().collect(Collectors.toList());
         int partitionSize = (int) Math.ceil((float) targetsList.size() / numPartitions);
         List<Set<String>> targetPartitions = new ArrayList<>(numPartitions);
@@ -213,7 +249,7 @@ public abstract class CountDMatrixGenerator {
                 (System.nanoTime() - startTime) / 1000000000));
     }
 
-    public void writeVectors(String outputPath) {
+    private void writeVectors(String outputPath) {
         if (!getVectors) {
             System.out.println("Unable to write vectors, no vectors constructed.");
             return;
@@ -255,7 +291,7 @@ public abstract class CountDMatrixGenerator {
         }
     }
 
-    public void writeWordmap(String outputPath) {
+    private void writeWordmap(String outputPath) {
         try {
             PrintWriter writer = new PrintWriter(
                     new FileOutputStream(Paths.get(outputPath, "wordmap.txt").toString()), false);

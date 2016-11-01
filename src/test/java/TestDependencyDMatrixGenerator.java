@@ -33,11 +33,7 @@ public class TestDependencyDMatrixGenerator {
         Set<String> targets = new HashSet<>(Arrays.asList(new String[]{"alpha"}));
         DependencyDMatrixGenerator dmg
                 = new DependencyDMatrixGenerator(testData.getPath(), targets, 2, 2, false);
-        try {
-            dmg.generateMatrices();
-        } catch (IOException e) {
-            fail("IOException thrown");
-        }
+        dmg.generateMatrices();
         float[][] matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
 
@@ -47,11 +43,7 @@ public class TestDependencyDMatrixGenerator {
         trueMatrix = TestUtils.matrixSum(TestUtils.outerProduct(context1),
                 TestUtils.matrixScalarProduct(2.0f, TestUtils.outerProduct(context2)));
         dmg = new DependencyDMatrixGenerator(testData.getPath(), targets, 0, 2, false);
-        try {
-            dmg.generateMatrices();
-        } catch (IOException e) {
-            fail("IOException thrown");
-        }
+        dmg.generateMatrices();
         matrix = dmg.getMatrix("alpha");
         Assert.assertArrayEquals(matrix, trueMatrix);
 
@@ -80,11 +72,7 @@ public class TestDependencyDMatrixGenerator {
         URL testData = this.getClass().getResource("/test-data-parsed");
         Set<String> targets = new HashSet<>(Arrays.asList(new String[]{"alpha"}));
         DependencyDMatrixGenerator dmg = new DependencyDMatrixGenerator(testData.getPath(), targets, 3, 2, true);
-        try {
-            dmg.generateMatrices();
-        } catch (IOException e) {
-            fail("IOException thrown");
-        }
+        dmg.generateMatrices();
         float[] vector = dmg.getVector("alpha");
         float[] trueVector;
         trueVector = new float[]{7.0f, 6.0f, 2.0f};

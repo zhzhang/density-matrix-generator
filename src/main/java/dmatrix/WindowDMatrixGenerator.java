@@ -5,6 +5,7 @@ import dmatrix.io.TokenizedFileReader;
 import dmatrix.io.TokenizedFileReaderFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -33,26 +34,21 @@ public class WindowDMatrixGenerator extends CountDMatrixGenerator {
         int numRuns = Integer.parseInt(args[6]);
         int windowSize = Integer.parseInt(args[7]);
         Set<String> targets = loadTargets(targetsPath, outputPath);
-        List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
-        File f = new File(Paths.get(outputPath, "vectors.txt").toString());
-        if (f.exists() && !f.delete()) {
-            System.out.println("Deleting previous vectors failed.");
-        }
-        for (Set<String> targetPartition : targetPartitions) {
-            WindowDMatrixGenerator dmg
-                    = new WindowDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors, windowSize);
-            dmg.generateMatrices();
-            dmg.writeMatrices(outputPath);
-            if (getVectors) {
-                dmg.writeVectors(outputPath);
-            }
-            dmg.writeWordmap(outputPath);
-        }
+        WindowDMatrixGenerator dmg
+                = new WindowDMatrixGenerator(corpusRoot, targets, dim, numThreads, numRuns,
+                getVectors, windowSize);
+        dmg.generateAndWriteMatrices(outputPath);
+    }
+
+    public WindowDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, int numRuns,
+                                  boolean getVectors, int windowSize) {
+        super(corpusRoot, targets, dim, numThreads, numRuns, getVectors);
+        this.windowSize = windowSize;
     }
 
     public WindowDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
                                   boolean getVectors, int windowSize) {
-        super(corpusRoot, targets, dim, numThreads, getVectors);
+        super(corpusRoot, targets, dim, numThreads, 1, getVectors);
         this.windowSize = windowSize;
     }
 
@@ -76,7 +72,7 @@ public class WindowDMatrixGenerator extends CountDMatrixGenerator {
                         (System.nanoTime() - startTime) / 1000000000));
     }
 
-    public void generateMatrices() {
+    void generateMatricesRun() {
         // Generate matrices.
         System.out.println("Generating matrices...");
         long startTime = System.nanoTime();

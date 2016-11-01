@@ -3,6 +3,7 @@ package dmatrix;
 import dmatrix.io.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.Runnable;
 import java.lang.InterruptedException;
 import java.nio.file.Paths;
@@ -27,25 +28,19 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
         String outputPath = args[5];
         int numRuns = Integer.parseInt(args[6]);
         Set<String> targets = loadTargets(targetsPath, outputPath);
-        List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
-        File f = new File(Paths.get(outputPath, "vectors.txt").toString());
-        if (f.exists() && !f.delete()) {
-           System.out.println("Deleting previous vectors failed.");
-        }
-        for (Set<String> targetPartition : targetPartitions) {
-            SentenceDMatrixGenerator dmg
-                    = new SentenceDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors);
-            dmg.generateMatrices();
-            dmg.writeMatrices(outputPath);
-            if (getVectors) {
-                dmg.writeVectors(outputPath);
-            }
-            dmg.writeWordmap(outputPath);
-        }
+        SentenceDMatrixGenerator dmg
+                = new SentenceDMatrixGenerator(corpusRoot, targets, dim, numThreads, numRuns, getVectors);
+        dmg.generateAndWriteMatrices(outputPath);
     }
 
-    public SentenceDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
-        super(corpusRoot, targets, dim, numThreads, getVectors);
+    public SentenceDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
+                                    int numRuns, boolean getVectors) {
+        super(corpusRoot, targets, dim, numThreads, numRuns, getVectors);
+    }
+
+    public SentenceDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
+                                    boolean getVectors) {
+        super(corpusRoot, targets, dim, numThreads, 1, getVectors);
     }
 
     void generateWordmap(int dim) {
@@ -68,7 +63,7 @@ public class SentenceDMatrixGenerator extends CountDMatrixGenerator {
                         (System.nanoTime() - startTime) / 1000000000));
     }
 
-    public void generateMatrices() {
+    void generateMatricesRun() {
         // Generate matrices.
         System.out.println("Generating matrices...");
         long startTime = System.nanoTime();

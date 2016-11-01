@@ -24,31 +24,30 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
         boolean getVectors = (Integer.parseInt(args[4]) == 1);
         String outputPath = args[5];
         int numRuns = Integer.parseInt(args[6]);
+
         Set<String> targets = loadTargets(targetsPath, outputPath);
-        List<Set<String>> targetPartitions = partitionTargets(targets, numRuns);
         File f = new File(Paths.get(outputPath, "vectors.txt").toString());
-        if (f.exists() && !f.delete()) {
+        if (getVectors && f.exists() && !f.delete()) {
             System.out.println("Deleting previous vectors failed.");
         }
-        for (Set<String> targetPartition : targetPartitions) {
-            DependencyDMatrixGenerator dmg
-                    = new DependencyDMatrixGenerator(corpusRoot, targetPartition, dim, numThreads, getVectors);
-            dmg.generateMatrices();
-            dmg.writeMatrices(outputPath);
-            if (getVectors) {
-                dmg.writeVectors(outputPath);
-            }
-            dmg.writeWordmap(outputPath);
-        }
+        DependencyDMatrixGenerator dmg
+                = new DependencyDMatrixGenerator(corpusRoot, targets, dim, numThreads, numRuns, getVectors);
+        dmg.generateAndWriteMatrices(outputPath);
     }
 
-    public DependencyDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads, boolean getVectors) {
-        super(corpusRoot, targets, dim, numThreads, getVectors);
+    public DependencyDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
+                                      int numRuns, boolean getVectors) {
+        super(corpusRoot, targets, dim, numThreads, numRuns, getVectors);
+    }
+
+    public DependencyDMatrixGenerator(String corpusRoot, Set<String> targets, int dim, int numThreads,
+                                      boolean getVectors) {
+        super(corpusRoot, targets, dim, numThreads, 1, getVectors);
     }
 
     void generateWordmap(int dim) {
         DependencyWordmapGenerator dependencyWordmapGenerator
-                = new DependencyWordmapGenerator(corpusRoot, targets, numThreads);
+                = new DependencyWordmapGenerator(corpusRoot, allTargets, numThreads);
         System.out.println("Generating wordmap...");
         long startTime = System.nanoTime();
         wordMap = dependencyWordmapGenerator.generate();
@@ -64,7 +63,7 @@ public class DependencyDMatrixGenerator extends CountDMatrixGenerator {
         }
     }
 
-    public void generateMatrices() throws IOException {
+    void generateMatricesRun() {
         System.out.println("Generating matrices...");
         long startTime = System.nanoTime();
         List<List<String>> filePathPartitions = IOUtils.getFilePathPartitions(corpusRoot, numThreads);
